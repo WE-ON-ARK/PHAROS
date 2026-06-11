@@ -147,6 +147,95 @@
 
 ---
 
+## STAGE 5 — 시뮬레이션 하네스 (2026-06-11)
+
+**산출물**
+- `sim/core.py`: `SceneSpec`, `SimFrame`, `make_default_scene`, `GazeSimulator` (simulate_a/b/stream)
+- `sim/__init__.py`: public API re-export
+- `tests/test_sim.py`: 11개 테스트 (Ht 비교, Hs 비교, 범위 검증, CLI 단조성, stream, 연기 비교, e2e, 4-조건 표)
+- `pyproject.toml`: mypy_path에 `"."` 추가, `packages = ["pharos", "sim"]`
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (20 source files, 0 issues)
+- [x] pytest 통과 (53 passed)
+- [x] 4-조건 요약표 (A/B × 저/고 연기, seed=42):
+
+| Scenario | Smoke | Hs | Ht | CLI |
+|----------|-------|------|------|------|
+| A | low | 5.4400 | **2.0915** | 0.7334 |
+| B | low | 3.3240 | **1.9513** | 0.6159 |
+| A | high | 5.4400 | **2.0915** | 0.7334 |
+| B | high | 3.3240 | **1.9513** | 0.6159 |
+
+Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
+
+**주요 결정 사항**
+- Scenario B 구조화 시선: 85% 확률 순환 전이(zone→zone) + Gaussian σ=35px 클러스터링
+- seed 분리: simulate_a=seed, simulate_b=seed+1 (호출 순서 무관 재현성)
+- 동공 피크: A=6.0mm (50% 확장, 고부하), B=5.0mm (25% 확장, 저부하)
+- 산란: `clip(smoke_density + N(0, 0.03), 0, 1)` — 실제 Tyndall 센서 노이즈 모사
+
+---
+
+## STAGE 6 — 파이프라인 오케스트레이터 + IO 어댑터 + HudState (2026-06-11)
+
+**산출물**
+- `src/pharos/io/core.py`: `GazeSample`, `GazeSource`(ABC), `ReplayGazeSource`, `PupilSample`, `PupilSource`(ABC), `ReplayPupilSource`
+- `src/pharos/io/__init__.py`: public API re-export
+- `src/pharos/pipeline/core.py`: `HudState` (+ `to_dict()`), `PharosPipeline` (`tick()`, `can_tick()`)
+- `src/pharos/pipeline/__init__.py`: public API re-export
+- `tests/test_pipeline.py`: 12개 테스트
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (13 source files, 0 issues)
+- [x] pytest 통과 (65 passed, 53→65)
+- [x] 주요 출력:
+
+| 측정 | 값 |
+|------|-----|
+| pipeline Ht(A) | **2.0915** bits |
+| pipeline Ht(B) | **1.9513** bits |
+| mean density (low smoke) | 0.0963 |
+| mean density (high smoke) | 0.7963 |
+
+**주요 결정 사항**
+- `GazeSource` / `PupilSource` ABC: `SensingSource`와 완전 대칭 구조 (read/has_data)
+- 버퍼: `deque(maxlen=fixation_window/pupil_window)` — O(1) append, 자동 eviction
+- cogload 부족 시 `0.0` 반환 — [0,1] 범위 유지
+- `HudState.to_dict()`: `active_hazards` → `{id, kind, priority}` 최소화 (JSON 계약)
+- `ranked_scores`: `list[tuple[float, str]]` — score + hazard_id만 (Hazard 전체 직렬화 불필요)
+- e2e Ht 테스트: `fixation_window=200` 필요 — 작은 window에서 희소 전이 행렬로 A<B 역전 현상
+
+---
+
+## STAGE 7 — HUD 프론트엔드 (React + TypeScript + FastAPI) (2026-06-11)
+
+**산출물**
+- `hud/core.py`: `generate_replay(scene, scenario, n_frames)` → `list[dict]`
+- `hud/server.py`: FastAPI (`/api/replay/{scenario}`, `/api/scene`), lifespan 패턴
+- `hud/frontend/`: React 18 + TypeScript + Vite (SceneView, MetricsPanel, PriorityList, Controls)
+- `tests/test_hud.py`: 13개 테스트
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (16 source files, 0 issues)
+- [x] pytest 통과 (78 passed, 65→78)
+- [x] `tsc && vite build` 성공 (36 modules, 151 kB JS)
+- [x] UI 렌더링 확인 (스크린샷):
+  - 위험물 마커 올바른 위치 (victim=빨강, escape=초록, fire=주황)
+  - Priority Queue 하이라이트 (victim 0.547 > escape 0.496)
+  - Scenario A/B 토글, 재생 컨트롤, 타임라인 슬라이더
+
+**주요 결정 사항**
+- `generate_replay()` 각 HudState 딕셔너리에 `fixation` 필드 추가 (SceneView 시선 트레일용)
+- FastAPI: `@app.on_event` → lifespan 컨텍스트 매니저 (deprecation 제거)
+- Canvas에서 smoke_density를 배경 밝기로 반영 (연기 농도 시각화)
+- `fixation_window=200` 사용 — 전체 200프레임 엔트로피 비교 정확도 보장
+
+---
+
 ## Known Limitations / Next Steps
 
-- STAGE 5: sim/ 에 합성 시뮬레이터 (장면·시선·동공·산란) 구현 예정
+- STAGE 8: `eval/` — 2×2 실험 러너 (UI×smoke), 통계 분석, 가설 검증
