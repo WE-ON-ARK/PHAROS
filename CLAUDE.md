@@ -22,6 +22,11 @@
 | **AOI (Area of Interest)** | 시선 이산화 단위. 화면을 `bin_size × bin_size` 픽셀 격자로 나눈 각 셀. 엔트로피 계산의 기본 상태 단위. |
 | **saccade** | 한 fixation에서 다른 fixation으로 이동하는 고속 안구 운동. 전이 엔트로피 계산 시 전이 이벤트로 취급. |
 | **HudState** | 파이프라인이 매 틱 출력하는 직렬화 가능 상태 객체. 활성 항목, 우선순위 큐, 부하 지표, 가시거리, 타임스탬프를 포함. HUD와의 JSON 계약. |
+| **TeammateState** | 한 대원이 매 틱 브로드캐스트하는 상태. node_id, incident-map 위치(m), 인지부하, 가시거리, 연기농도, 활성 위험물 수, 자가보고 상태를 포함. 팀 메시의 per-tick 계약. |
+| **TeamEvent (돌변상황)** | 대원 단위로 발생하는 이산 방송 이벤트. MAYDAY · flashover · 구조물 붕괴 · 요구조자 발견 · 연락두절 · 과부하경보 · 대피 · 복귀(RECOVERED) 8종. |
+| **PeerStatus** | 대원의 해소된 운영 상태. OK < OVERLOAD < DISTRESS < DOWN < LOST. OK/OVERLOAD/LOST는 코디네이터가 도출, DISTRESS/DOWN은 자가보고 가능. |
+| **TeamCoordinator** | TeammateState를 집계하고 돌변상황 이벤트를 도출하는 순수·동기 코어. ingest(상태 갱신)·tick(heartbeat 스윕)·snapshot(팀 뷰)으로 구성. 전송 계층(WebSocket)은 이 코어를 감싼다. |
+| **TeamSnapshot** | 코디네이터가 출력하는 팀 전체 집계 뷰. 각 대원의 PeerView(상태·침묵시간)와 최근 이벤트 피드를 포함. 지휘 HUD와의 JSON 계약 (HudState의 팀 버전). |
 
 ---
 
@@ -58,7 +63,8 @@ src/pharos/
 ├── sensing/    # 산란 강도 → 연기 농도 → 가시거리
 ├── priority/   # STOM 점수화 + PriorityQueueEngine
 ├── pipeline/   # PharosPipeline.tick() 오케스트레이터
-└── io/         # GazeSource, PupilSource, SensingSource 어댑터 인터페이스
+├── io/         # GazeSource, PupilSource, SensingSource 어댑터 인터페이스
+└── comms/      # TeamCoordinator: 대원 상태 집계 + 돌변상황 이벤트 (팀 메시 코어)
 sim/            # 합성 장면·시선·동공·산란 시뮬레이터
 eval/           # 2×2 실험 러너 + 통계 + 리포트
 hud/            # 웹 기반 HUD 프론트엔드
