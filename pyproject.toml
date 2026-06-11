@@ -20,6 +20,7 @@ dev = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
     "httpx>=0.27",
+    "scipy>=1.13",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -40,7 +41,7 @@ quote-style = "double"
 strict = true
 python_version = "3.11"
 mypy_path = "src:."
-packages = ["pharos", "sim", "hud"]
+packages = ["pharos", "sim", "hud", "eval"]
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
