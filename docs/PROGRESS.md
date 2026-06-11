@@ -116,6 +116,37 @@
 
 ---
 
+---
+
+## STAGE 4 — STOM 우선순위 점수화 + 큐 엔진 (2026-06-11)
+
+**산출물**
+- `src/pharos/priority/core.py`: `HazardKind`, `Hazard`, `ScoringContext`, `ScoringWeights`, `score()`, `PriorityQueueEngine`
+- `src/pharos/priority/__init__.py`: public API re-export
+- `tests/test_priority.py`: 11개 테스트 (점수 단위, 동적 재정렬, top-k 직렬화)
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (11 source files, 0 issues)
+- [x] pytest 통과 (42 passed)
+- [x] 시나리오별 큐 스냅샷:
+
+| hazard | BEFORE smoke | AFTER smoke(victim=0.99) |
+|--------|-------------|--------------------------|
+| victim | **0.5750** (1위) | 0.2334 (5위) |
+| escape | 0.4950 (2위) | **0.4950 (1위)** |
+| fire | 0.4350 (3위) | 0.4350 (2위) |
+| struct | 0.3550 (4위) | 0.3550 (3위) |
+| team | 0.2950 (5위) | 0.2950 (4위) |
+
+**주요 결정 사항**
+- `hazard_smoke_overrides: dict[str, float]` — per-hazard 연기 density로 방향별 시인성 하락 모델링
+- `score = max(0, base) × max(0, 1 − smoke × visibility_sensitivity)` — 부하(difficulty) 도미넌트 시 0 클리핑 보장
+- `PriorityQueueEngine.update()` 는 명시적 호출(매 틱); 내부 캐시 없음(단순성)
+- `active_items()` ≤ top_k 보장 → HUD 직렬화 → 시선 전이 경로 단축
+
+---
+
 ## Known Limitations / Next Steps
 
-- STAGE 4: priority/ 에 STOM 우선순위 점수화 + PriorityQueueEngine 구현 예정
+- STAGE 5: sim/ 에 합성 시뮬레이터 (장면·시선·동공·산란) 구현 예정
