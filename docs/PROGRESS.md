@@ -52,6 +52,38 @@
 
 ---
 
+---
+
+## STAGE 2 — 동공 기반 인지 부하 추정기 (2026-06-11)
+
+**산출물**
+- `src/pharos/cogload/core.py`: `preprocess_pupil`, `extract_features`, `cognitive_load_index`, `PupilFeatures`, `LoadWeights`
+- `src/pharos/cogload/__init__.py`: public API re-export
+- `tests/test_cogload.py`: 8개 합성 신호 테스트
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (9 source files, 0 issues)
+- [x] pytest 통과 (17 passed, 0 warnings)
+- [x] 합성 신호별 cognitive_load_index 실제 수치:
+
+| 조건 | pct_change | peak_dilation | peak_latency | CLI |
+|------|-----------|--------------|-------------|-----|
+| 평탄 (0% 변화) | 0.0% | 0.000 | 0.00s | **0.0000** |
+| 쉬움 (10% 확장) | 10.0% | 0.400 | 1.95s | **0.2979** |
+| 보통 (30% 확장) | 30.0% | 1.200 | 1.95s | **0.6779** |
+| 어려움 (50% 확장) | 50.0% | 2.000 | 1.95s | **0.8779** |
+| blink 포함 (전처리 후) | 50.0% | 2.000 | 1.95s | **0.8779** |
+
+**주요 결정 사항**
+- blink 탐지: `diameter <= 0 OR < 0.5 × global_median` → `np.interp`로 선형 보간
+- 특징 통계: baseline/task 모두 median 기반 (단일 극단값에 강건)
+- 가중치 기본값: w_pct=0.50, w_peak=0.30, w_latency=0.20 (합=1.0)
+- 정규화 범위 기본값: 50%, 1mm, 5s (LoadWeights에 문서화)
+- CLI = weighted_sum / w_sum → 가중치 합계 무관하게 [0,1] 보장
+
+---
+
 ## Known Limitations / Next Steps
 
-- STAGE 2: cogload/ 에 동공 기반 인지 부하 추정기 구현 예정
+- STAGE 3: sensing/ 에 틴들 산란 → 연기 농도 모듈 구현 예정
