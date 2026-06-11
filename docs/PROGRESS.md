@@ -84,6 +84,38 @@
 
 ---
 
+---
+
+## STAGE 3 — 틴들 센싱 모듈 (2026-06-11)
+
+**산출물**
+- `src/pharos/sensing/core.py`: `ScatteringSample`, `CalibrationParams`, `SensingSource`(ABC), `ReplaySensingSource`, `scattering_to_density`, `density_to_visibility`
+- `src/pharos/sensing/__init__.py`: public API re-export
+- `tests/test_sensing.py`: 14개 테스트 (단조성 2종, 범위, 어댑터 교체)
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (10 source files, 0 issues)
+- [x] pytest 통과 (31 passed)
+- [x] 산란값 시퀀스 → 농도·가시거리 실제 출력:
+
+| scatter | density | visibility |
+|---------|---------|-----------|
+| 0.00 | 0.000 | 30.00 m |
+| 0.11 | 0.111 | 21.50 m |
+| 0.33 | 0.333 | 11.04 m |
+| 0.56 | 0.556 | 5.67 m |
+| 0.78 | 0.778 | 2.91 m |
+| 1.00 | 1.000 | 1.49 m |
+
+**주요 결정 사항**
+- `SensingSource` ABC: `read() → ScatteringSample` + `has_data() → bool` (하드웨어 어댑터 계약)
+- `ReplaySensingSource`: 소진 후 `read()` → `StopIteration`; 파이프라인은 `has_data()` 확인 후 호출
+- 보정 모델: density = linear clip, visibility = Koschmieder 지수 감쇠 (V_max × e^{−kd})
+- `zip(strict=False)` — ruff B905 준수 (STAGE 1·2 테스트에도 향후 적용)
+
+---
+
 ## Known Limitations / Next Steps
 
-- STAGE 3: sensing/ 에 틴들 산란 → 연기 농도 모듈 구현 예정
+- STAGE 4: priority/ 에 STOM 우선순위 점수화 + PriorityQueueEngine 구현 예정
