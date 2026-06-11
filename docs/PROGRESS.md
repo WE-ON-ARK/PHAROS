@@ -236,6 +236,45 @@ Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
 
 ---
 
-## Known Limitations / Next Steps
+## STAGE 8 — 2×2 실험 러너 + 통계 + 리포트 (2026-06-12)
 
-- STAGE 8: `eval/` — 2×2 실험 러너 (UI×smoke), 통계 분석, 가설 검증
+**산출물**
+- `eval/runner.py`: `run_experiment(n_reps=30)` → `ExperimentResult` — 4 조건 × 30 독립 시드
+- `eval/stats.py`: `analyse()` → `HypothesisResults` — Mann-Whitney U 단측 검정 (H1~H4)
+- `eval/report.py`: `build_report()` → str — 마크다운 2×2 집계표 + 가설 표 + 결론
+- `eval/__main__.py`: `python -m eval` 진입점
+- `eval/__init__.py`: 전체 public API re-export
+- `tests/test_eval.py`: 12개 테스트
+- `pyproject.toml`: `scipy>=1.13` 추가, `packages = ["pharos", "sim", "hud", "eval"]`
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (21 source files, 0 issues)
+- [x] pytest 통과 (90 passed, 78→90)
+- [x] `python -m eval` 리포트 출력:
+
+| Scenario | Smoke | mean Hs | mean Ht | mean CLI | mean Visibility |
+|----------|-------|--------:|--------:|---------:|----------------:|
+| A | low | 5.4090 | 2.1140 | 0.3992 | 22.46 m |
+| A | high | 5.4090 | 2.1140 | 0.3992 | 2.75 m |
+| B | low | 3.3765 | 1.9060 | 0.2883 | 22.52 m |
+| B | high | 3.3765 | 1.9060 | 0.2883 | 2.76 m |
+
+| Hypothesis | U statistic | p-value | effect (r) | Rejected |
+|------------|------------:|--------:|-----------:|----------|
+| H1: Ht(B) < Ht(A) | 36.0 | 0.0000 | +0.9800 | YES ✓ |
+| H2: Hs(B) < Hs(A) | 0.0 | 0.0000 | +1.0000 | YES ✓ |
+| H3: CLI(B) < CLI(A) | 0.0 | 0.0000 | +1.0000 | YES ✓ |
+| H4: Ht(A,hi) > Ht(A,lo) | 450.0 | 0.5030 | +0.0000 | NO |
+
+**주요 결정 사항**
+- per-frame 풀링 방식 대신 **per-rep 최종 프레임 값** 사용: fixation_window=n_frames인 rolling buffer는 초기 프레임에서 B(구조화)가 A(랜덤)보다 Ht가 더 높아지는 성장 교차 현상 발생 → 최종(수렴) 프레임만 추출하여 30 시드로 비교
+- CLI: per-rep post-warmup mean (pupil 신호는 수렴이 빠르므로 평균 사용)
+- H4 기각 불가 (p=0.50): 시뮬레이터가 연기 농도에 따라 시선을 변화시키지 않으므로 설계상 예상된 결과 (Known Limitation)
+
+---
+
+## Known Limitations
+
+- H4(연기→Ht 증가) 검증 불가: 현재 GazeSimulator가 smoke_density에 따라 시선 패턴을 변경하지 않음 → 실제 실험에서만 검증 가능
+- 단일 장면 고정 (victim/escape/fire 3개 hazard): 다양한 장면 구성에 대한 일반화 미검증
