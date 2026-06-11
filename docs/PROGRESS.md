@@ -274,7 +274,50 @@ Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
 
 ---
 
+## STAGE 9 — 팀 메시 코디네이션 코어 (comms/) (2026-06-12)
+
+**산출물**
+- `src/pharos/comms/core.py`: `PeerStatus`·`EventKind` enum, `TeammateState`·`TeamEvent`·`PeerView`·`TeamSnapshot` dataclass, `derive_status()`, `TeamCoordinator`
+- `src/pharos/comms/__init__.py`: public API re-export
+- `tests/test_comms.py`: 17개 테스트
+- `CLAUDE.md`: 용어사전 5종 추가(TeammateState/TeamEvent/PeerStatus/TeamCoordinator/TeamSnapshot), 모듈구조에 comms/ 추가
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (23 source files, 0 issues)
+- [x] pytest 통과 (107 passed, 90→107)
+- [x] 상태 해소·이벤트 도출 동작:
+
+| 입력 | 해소 상태 | 도출 이벤트 |
+|------|----------|------------|
+| CLI=0.8 | OVERLOAD | OVERLOAD_ALERT |
+| self_reported=DISTRESS | DISTRESS | MAYDAY |
+| 침묵 > 5s (heartbeat) | LOST | LOST_CONTACT |
+| LOST → 신규 업데이트 | OK | RECOVERED |
+
+**주요 결정 사항**
+- **순수·동기 코어**: 전송(WebSocket)·async 일절 없음 → strict 게이트로 완전 검증. 모든 선행 단계(entropy/cogload/sensing/priority)가 순수 코어였던 패턴 유지. WebSocket 허브(STAGE 10)가 이 코어를 감쌈
+- **상태 해소 우선순위**: 침묵>timeout → LOST가 최우선(자가보고 MAYDAY보다도). 이유: 통신 두절 시 마지막 자가보고와 무관하게 "대원을 잃었다"는 사실이 지배적
+- **이벤트 중복 억제**: 상태 *전이* 시에만 이벤트 발생. 과부하 지속 중 매 틱 재경보 방지
+- **이중 경로 상태**: OK/OVERLOAD/LOST는 코디네이터 도출, DISTRESS/DOWN은 대원 자가보고(수동 MAYDAY) 허용
+- **토폴로지 = 허브앤스포크**: 지휘소가 집계·재배포 (P2P 메시 대비 단순, 실제 incident command와 일치)
+- **위치 = 별도 incident-map 좌표(m)**: 시선(800×600 화면)과 분리한 물리적 위치 → 대원 상호 모니터링용
+- 이벤트 피드는 `deque(maxlen=50)` 링버퍼
+
+---
+
+## STAGE 10 (예정) — 팀 전송 + 멀티노드 시뮬 + 지휘 HUD
+
+- WebSocket 허브(`/ws/team`): 각 대원 클라이언트 ↔ TeamCoordinator 팬아웃
+- `TeamSimulator`: N명 대원 합성(건물맵 이동 트랙 + 기존 GazeSimulator)
+- 프론트 `TeamMap`(상태색 대원 점) + `EventFeed`(돌변상황 티커) + 라이브 모드
+- 라이브 단일노드 스트리밍은 팀 허브(노드 1명)의 특수 케이스로 포함
+
+---
+
 ## Known Limitations
 
 - H4(연기→Ht 증가) 검증 불가: 현재 GazeSimulator가 smoke_density에 따라 시선 패턴을 변경하지 않음 → 실제 실험에서만 검증 가능
 - 단일 장면 고정 (victim/escape/fire 3개 hazard): 다양한 장면 구성에 대한 일반화 미검증
+- STAGE 9 comms 코어는 전송 계층이 없음 — 실제 대원 간 통신은 STAGE 10 WebSocket 허브에서 배선
+- FLASHOVER_WARNING·STRUCTURAL_COLLAPSE·NEW_VICTIM·EVACUATE 이벤트는 enum 정의만 존재 — 자동 탐지 트리거는 미구현(수동/외부 주입 가정)
