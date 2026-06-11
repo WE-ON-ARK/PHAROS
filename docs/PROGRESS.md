@@ -306,12 +306,35 @@ Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
 
 ---
 
-## STAGE 10 (예정) — 팀 전송 + 멀티노드 시뮬 + 지휘 HUD
+## STAGE 10 — 팀 전송 + 멀티노드 시뮬 + 지휘 HUD (2026-06-12)
 
-- WebSocket 허브(`/ws/team`): 각 대원 클라이언트 ↔ TeamCoordinator 팬아웃
-- `TeamSimulator`: N명 대원 합성(건물맵 이동 트랙 + 기존 GazeSimulator)
-- 프론트 `TeamMap`(상태색 대원 점) + `EventFeed`(돌변상황 티커) + 라이브 모드
-- 라이브 단일노드 스트리밍은 팀 허브(노드 1명)의 특수 케이스로 포함
+**산출물**
+- `sim/team.py`: `TeamMemberSpec`, `TeamSimulator`, `make_default_team` — 3인 팀(alpha/bravo/charlie) 웨이포인트 순찰 + 독립 PharosPipeline per 대원
+- `hud/server.py` 확장: `/ws/live?scenario&fps` (단일노드), `/ws/team?fps` (TeamSnapshot 스트림)
+- `hud/frontend/src/hooks/useTeamWS.ts`: WS → `TeamSnapshot` 상태 훅
+- `hud/frontend/src/components/TeamMap.tsx`: SVG 500×400 incident map (50×40m), 상태색 대원 점·글로우
+- `hud/frontend/src/components/EventFeed.tsx`: 최신순 10건, 8종 이벤트 색상 배지
+- `hud/frontend/src/App.tsx` 확장: "Replay" / "Team Live" 모드 탭
+- `hud/frontend/vite.config.ts`: `/ws` 프록시 추가 (WS → localhost:8000)
+- `tests/test_team_sim.py`: 10개 테스트
+- `tests/test_ws.py`: 11개 테스트
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (26 source files, 0 issues)
+- [x] pytest 통과 (128 passed, 107→128)
+- [x] `tsc && vite build` 성공 (39 modules, 156.64 kB)
+- [x] UI 렌더링 확인 (스크린샷):
+  - **Replay 모드**: 위험물 마커·우선순위 큐·재생 컨트롤 정상 동작
+  - **Team Live 모드**: alpha/bravo/charlie 3인 상태카드(CLI%·visibility·OK 배지), EventFeed, Incident Map SVG 대원 점 표시, 헤더 `Team Live · t=4.7s` 녹색
+- [x] WebSocket `/ws/team` 실 응답 확인: `{timestamp, peers[3], recent_events}`, 첫 피어 `alpha ok`
+
+**주요 결정 사항**
+- **허브앤스포크 WebSocket**: FastAPI가 사전 계산된 200 프레임 TeamSnapshot을 `asyncio.sleep(1/fps)` 속도로 스트리밍. 실시간 다중 클라이언트 대신 미리 시뮬레이션된 결과 재생 (프로토타입 단계 단순화)
+- **TeamSimulator 위치**: 웨이포인트 사이 선형 보간 + 사이클릭 랩 (거리 기반), 속도 1m/s, 3인 서로 다른 순찰 경로 (south wing / east wing / entrance)
+- **fixation_window=n_frames**: 전체 프레임 크기로 설정해 희소 전이 행렬 아티팩트 방지 (STAGE 8 결정 사항 계승)
+- **Vite `/ws` 프록시**: 브라우저에서 `ws://localhost:8000` 직접 연결 대신 동일 오리진 프록시 경유 → CORS 이슈 없음
+- **AppMode 탭**: "replay" (기존 단일노드 재생) | "team" (팀 라이브) 전환 가능, 기존 Replay 기능 완전 보존
 
 ---
 
@@ -319,5 +342,5 @@ Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
 
 - H4(연기→Ht 증가) 검증 불가: 현재 GazeSimulator가 smoke_density에 따라 시선 패턴을 변경하지 않음 → 실제 실험에서만 검증 가능
 - 단일 장면 고정 (victim/escape/fire 3개 hazard): 다양한 장면 구성에 대한 일반화 미검증
-- STAGE 9 comms 코어는 전송 계층이 없음 — 실제 대원 간 통신은 STAGE 10 WebSocket 허브에서 배선
+- WebSocket 스트리밍은 사전 계산된 재생 방식 — 실시간 다중 클라이언트 팬아웃(실전 배포)은 미구현
 - FLASHOVER_WARNING·STRUCTURAL_COLLAPSE·NEW_VICTIM·EVACUATE 이벤트는 enum 정의만 존재 — 자동 탐지 트리거는 미구현(수동/외부 주입 가정)

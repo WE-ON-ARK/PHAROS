@@ -30,3 +30,45 @@ export interface SceneInfo {
 }
 
 export type Scenario = "a" | "b";
+
+// ── Team networking types ─────────────────────────────────────────────────────
+
+export type PeerStatusKind = "ok" | "overload" | "distress" | "down" | "lost";
+
+export type EventKindValue =
+  | "mayday"
+  | "flashover_warning"
+  | "structural_collapse"
+  | "new_victim"
+  | "lost_contact"
+  | "overload_alert"
+  | "evacuate"
+  | "recovered";
+
+export interface TeamEvent {
+  event_id: string;
+  kind: EventKindValue;
+  source_node: string;
+  timestamp: number;
+  position: [number, number];
+  message: string;
+}
+
+export interface PeerView {
+  node_id: string;
+  timestamp: number;
+  position: [number, number];
+  cognitive_load: number;
+  visibility: number;
+  smoke_density: number;
+  active_hazard_count: number;
+  self_reported: PeerStatusKind;
+  status: PeerStatusKind;
+  silent_for: number;
+}
+
+export interface TeamSnapshot {
+  timestamp: number;
+  peers: PeerView[];
+  recent_events: TeamEvent[];
+}
