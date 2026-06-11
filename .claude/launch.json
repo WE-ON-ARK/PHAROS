@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pharos-hud",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "hud/frontend",
+      "port": 5173,
+      "autoPort": true
+    }
+  ]
+}
