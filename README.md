@@ -117,19 +117,6 @@
 
 ---
 
-## Team ARK
-
-| | **Kim Sunmin** (김선민) | **Ryan Ahn Song** (송리안) | **onew000** |
-|---|---|---|---|
-| **역할** | 팀 리더 | 개발자 | 컨트리뷰터 |
-| **GitHub** | [@biro425](https://github.com/biro425) | [@Quackk08](https://github.com/Quackk08) | [@onew000](https://github.com/onew000) |
-| **학교** | 대전대신고등학교 | 대전대신고등학교 | — |
-| **담당** | 도메인 설계 · 알고리즘 연구 · 실험 설계 · 발표 | 전체 소프트웨어 아키텍처 · Python 코어 · FastAPI · React HUD · CI 파이프라인 | — |
-| **사용 언어** | Python, C, C++ | Python, TypeScript, C, C++ | — |
-| **사용 도구** | NumPy, SciPy, Figma | FastAPI, React, Vite, Ruff, mypy, pytest | — |
-
-**지도 교사:** 박정은 선생님, 대전대신고등학교
-
 ---
 
 ## Repository
