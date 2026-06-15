@@ -338,9 +338,48 @@ Ht(B) < Ht(A) 양쪽 연기 조건에서 재현 가능하게 통과.
 
 ---
 
+## STAGE 11 — 실제 웹캠 입력 경로 + 라이브 시각화 + 디자인 시스템 (2026-06-15)
+
+**산출물**
+- `src/pharos/vision/estimate.py`: 순수 이미지→추정 함수 (`detect_pupil`, `detect_eyes`, `gaze_point`, `pupil_diameter_mm`, `estimate_haze`, `to_grayscale`)
+- `src/pharos/vision/camera.py`: `CameraFeed` + `CameraGazeSource`·`CameraPupilSource`·`CameraSensingSource` — 공유 피드를 기존 Source 계약 뒤로 감싼 어댑터
+- `src/pharos/vision/render.py`: HUD 오버레이 렌더링(`render_overlay`, `draw_camera_view`, `encode_jpeg_base64`) — design.md 팔레트(BGR)
+- `src/pharos/vision/runner.py` + `__main__.py`: `python -m pharos.vision` 라이브 cv2 루프
+- `hud/server.py`: `/ws/camera` — 주석처리된 프레임(JPEG base64) + HudState 스트림, OpenCV 지연 임포트로 선택적 의존성 유지
+- `hud/frontend/src/theme.ts`: design.md 토큰(색·반경·간격·타이포)
+- `hud/frontend/src/hooks/useCameraWS.ts` + `components/CameraView.tsx`: 라이브 카메라 모드
+- 전 컴포넌트 design.md 스타일 적용(App/Controls/MetricsPanel/PriorityList/TeamMap/EventFeed/SceneView), `index.html` true-black 캔버스 + Inter/General Sans
+- `tests/test_vision.py`: 24개 테스트 (순수 추정 + 어댑터 위임 + 가짜 캡처 e2e)
+- `pyproject.toml`: `opencv-python` 추가(dev + camera extra), cv2 mypy override
+
+**검증 게이트**
+- [x] ruff check 통과
+- [x] mypy strict 통과 (32 source files, 0 issues)
+- [x] pytest 통과 (152 passed, 128→152)
+- [x] `tsc && vite build` 성공 (42 modules, 160.34 kB)
+- [x] UI 렌더링 확인 (스크린샷, 1280×800):
+  - **Replay**: true-black 캔버스 · 코발트 pill 탭 · 백색 Play CTA · 둥근 우선순위 카드
+  - **Team Live**: surface-elevated incident map · pill OK 배지 · 상태색 범례 (회귀 없음)
+  - **Live Camera**: `/ws/camera` 왕복 성공 → 카메라 미개방 시 스타일된 오류 카드("Camera offline" + 폴백 안내) 정상 표시
+- [x] 가짜 `VideoCapture` 주입 e2e: CameraFeed→PharosPipeline→render 30프레임 무하드웨어 동작
+
+**주요 결정 사항**
+- **하드웨어는 어댑터 뒤로**: 카메라 추정은 순수 함수(estimate.py, 합성 이미지로 테스트), 캡처/윈도우만 device-bound(camera/runner). 코어 PharosPipeline 무변경 재사용
+- **공유 피드 + 읽기 순서 결합**: pipeline.tick()이 gaze→pupil→sensing 순으로 읽으므로 gaze 어댑터만 `advance()`로 프레임 캡처, 나머지 둘은 캐시 반환 → 틱당 1캡처·완전 동기
+- **동공 임계값=동적 범위 기반**: 고정 백분위는 동공이 ROI 소수 비율일 때 배경값에 붕괴 → `lo + 0.35×(hi−lo)` + 면적 상한 가드로 견고화
+- **연기=dark-channel prior proxy**: 단일 장면 카메라에서 Tyndall 산란 대체. 연기가 최소채널 바닥값을 올리는 성질 이용
+- **EMA 평활 + 직전 값 유지**: 검출 실패 프레임이 엔트로피·부하 버퍼에 스파이크를 주입하지 않도록 시선·동공직경 EMA, 미검출 시 홀드
+- **카메라 단일 점유 가드**: `_camera_in_use` 플래그로 한 번에 한 WS만 물리 카메라 점유, 캡처는 executor 스레드에서 실행해 이벤트 루프 비차단
+- **design.md = Revolut 2-모드 캔버스**: true-black(#000) 캔버스, 코발트 바이올렛(#494fdf) 액센트 희소 사용, 백색 pill primary CTA, rounded.full 버튼/rounded.lg 카드, Inter 본문
+
+---
+
 ## Known Limitations
 
 - H4(연기→Ht 증가) 검증 불가: 현재 GazeSimulator가 smoke_density에 따라 시선 패턴을 변경하지 않음 → 실제 실험에서만 검증 가능
 - 단일 장면 고정 (victim/escape/fire 3개 hazard): 다양한 장면 구성에 대한 일반화 미검증
-- WebSocket 스트리밍은 사전 계산된 재생 방식 — 실시간 다중 클라이언트 팬아웃(실전 배포)은 미구현
+- WebSocket 재생 스트림(`/ws/live`·`/ws/team`)은 사전 계산된 재생 방식 — 실시간 다중 클라이언트 팬아웃(실전 배포)은 미구현
 - FLASHOVER_WARNING·STRUCTURAL_COLLAPSE·NEW_VICTIM·EVACUATE 이벤트는 enum 정의만 존재 — 자동 탐지 트리거는 미구현(수동/외부 주입 가정)
+- **카메라 시선 매핑은 미보정 근사**: Haar 눈 ROI 내 동공 오프셋을 gain으로 증폭한 매핑(개인 보정·캘리브레이션 없음). 동공직경은 눈 ROI 폭 기준 상대 mm. 연구급 아이트래커 대체 아님
+- **카메라 연기 추정은 장면 카메라 가정**: dark-channel proxy는 외향(장면) 카메라용. 단일 전면 웹캠에서는 사용자 배경 기준이라 실제 화재 연기와 무관 — 실전은 외향 카메라 별도 필요
+- **`/ws/camera`는 서버 프로세스 카메라 권한 필요**: 백엔드가 카메라 TCC 권한을 가져야 동작(터미널 실행 시 미부여 가능). 미개방 시 오류 카드로 graceful degradation, 대안은 `python -m pharos.vision`
