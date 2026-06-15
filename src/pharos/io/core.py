@@ -7,6 +7,7 @@ share the same read() / has_data() contract.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -131,3 +132,53 @@ class ReplayPupilSource(PupilSource):
         )
         self._idx += 1
         return sample
+
+
+# ── Sector smoke (per-hazard directional) ─────────────────────────────────────
+
+
+class SectorSmokeSource(ABC):
+    """Abstract adapter providing per-hazard smoke density overrides each tick.
+
+    Decoupled from the Hazard type to avoid circular imports — the contract is
+    a plain dict keyed by hazard id strings.
+    """
+
+    @abstractmethod
+    def read_overrides(self) -> dict[str, float]:
+        """Return a mapping of hazard_id → local smoke density in [0, 1].
+
+        Only ids present in the dict are overridden; absent hazards fall back
+        to the global smoke density in ScoringContext.
+        """
+
+
+class StaticSectorSmokeSource(SectorSmokeSource):
+    """Fixed per-hazard smoke overrides — for testing and scripted scenarios."""
+
+    def __init__(self, overrides: dict[str, float]) -> None:
+        self._overrides = overrides
+
+    def read_overrides(self) -> dict[str, float]:
+        """Return the fixed override mapping unchanged every tick."""
+        return dict(self._overrides)
+
+
+class ComputedSectorSmokeSource(SectorSmokeSource):
+    """Dynamic overrides computed by a caller-supplied function.
+
+    smoke_fn — callable(hazard_id: str) -> float; called once per hazard id
+    hazard_ids — the set of hazard ids to query each tick
+    """
+
+    def __init__(
+        self,
+        hazard_ids: list[str],
+        smoke_fn: Callable[[str], float],
+    ) -> None:
+        self._ids = hazard_ids
+        self._fn = smoke_fn
+
+    def read_overrides(self) -> dict[str, float]:
+        """Invoke smoke_fn for each registered hazard id."""
+        return {hid: self._fn(hid) for hid in self._ids}

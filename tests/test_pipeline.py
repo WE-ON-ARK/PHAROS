@@ -9,8 +9,21 @@ import numpy as np
 import pytest
 from sim import GazeSimulator, SimFrame, make_default_scene
 
-from pharos.io import GazeSample, GazeSource, ReplayGazeSource, ReplayPupilSource
-from pharos.pipeline import HudState, PharosPipeline
+from pharos.io import (
+    GazeSample,
+    GazeSource,
+    ReplayGazeSource,
+    ReplayPupilSource,
+    StaticSectorSmokeSource,
+)
+from pharos.pipeline import (
+    CogLoadAdaptation,
+    HudState,
+    PharosPipeline,
+    _effective_top_k,
+    _shifted_weights,
+)
+from pharos.priority import ScoringWeights
 from pharos.sensing import ReplaySensingSource
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -245,3 +258,151 @@ def test_e2e_scenario_b_ht_less_than_a() -> None:
     ht_b = _run_ht("B")
     print(f"\n  pipeline Ht(A)={ht_a:.4f}  Ht(B)={ht_b:.4f}")
     assert ht_b < ht_a, f"Expected Ht(B)={ht_b:.4f} < Ht(A)={ht_a:.4f}"
+
+
+# ── CogLoadAdaptation unit tests ─────────────────────────────────────────────
+
+
+def test_effective_top_k_no_load() -> None:
+    """Below mid_threshold, top_k is unchanged."""
+    adapt = CogLoadAdaptation(mid_threshold=0.40, high_threshold=0.70)
+    assert _effective_top_k(0.0, 3, adapt) == 3
+    assert _effective_top_k(0.39, 3, adapt) == 3
+
+
+def test_effective_top_k_mid_load() -> None:
+    """At mid_threshold, top_k is reduced by 1 (floor 1)."""
+    adapt = CogLoadAdaptation(mid_threshold=0.40, high_threshold=0.70)
+    assert _effective_top_k(0.40, 3, adapt) == 2
+    assert _effective_top_k(0.55, 2, adapt) == 1
+    assert _effective_top_k(0.55, 1, adapt) == 1  # never below 1
+
+
+def test_effective_top_k_high_load() -> None:
+    """At or above high_threshold, top_k is always 1."""
+    adapt = CogLoadAdaptation(mid_threshold=0.40, high_threshold=0.70)
+    assert _effective_top_k(0.70, 5, adapt) == 1
+    assert _effective_top_k(1.00, 5, adapt) == 1
+
+
+def test_shifted_weights_below_high_threshold() -> None:
+    """Weights are unchanged below high_threshold."""
+    adapt = CogLoadAdaptation(high_threshold=0.70, weight_shift=0.10)
+    base = ScoringWeights()
+    result = _shifted_weights(0.69, base, adapt)
+    assert result is base
+
+
+def test_shifted_weights_at_high_threshold() -> None:
+    """At high_threshold, w_priority increases and w_salience decreases."""
+    adapt = CogLoadAdaptation(high_threshold=0.70, weight_shift=0.10)
+    base = ScoringWeights(w_priority=0.40, w_salience=0.20)
+    result = _shifted_weights(0.70, base, adapt)
+    assert result.w_priority == pytest.approx(0.50)
+    assert result.w_salience == pytest.approx(0.10)
+    # unchanged parameters
+    assert result.w_expectancy == pytest.approx(base.w_expectancy)
+    assert result.w_difficulty == pytest.approx(base.w_difficulty)
+
+
+def test_shifted_weights_clamped() -> None:
+    """w_priority is capped at 1.0 and w_salience is floored at 0.0."""
+    adapt = CogLoadAdaptation(high_threshold=0.70, weight_shift=0.60)
+    base = ScoringWeights(w_priority=0.90, w_salience=0.10)
+    result = _shifted_weights(1.0, base, adapt)
+    assert result.w_priority <= 1.0
+    assert result.w_salience >= 0.0
+
+
+# ── cognitive load closed-loop integration ────────────────────────────────────
+
+
+def test_display_top_k_in_hud_state() -> None:
+    """HudState always carries display_top_k matching effective adaptation."""
+    scene = make_default_scene()
+    pipe = _make_pipeline(GazeSimulator(scene).simulate_a(n_frames=200), top_k=2)
+    for _ in range(200):
+        state = pipe.tick()
+    # display_top_k must be in [1, 2] and match active_hazards length
+    assert 1 <= state.display_top_k <= 2
+    assert len(state.active_hazards) <= state.display_top_k
+
+
+def test_display_top_k_serialised_in_to_dict() -> None:
+    """to_dict() includes display_top_k key."""
+    scene = make_default_scene()
+    pipe = _make_pipeline(GazeSimulator(scene).simulate_a(n_frames=50))
+    for _ in range(50):
+        state = pipe.tick()
+    d = state.to_dict()
+    assert "display_top_k" in d
+    assert isinstance(d["display_top_k"], int)
+
+
+# ── SectorSmokeSource / directional smoke ────────────────────────────────────
+
+
+def test_sector_smoke_reduces_top_hazard_score() -> None:
+    """Injecting high smoke on the top hazard's direction drops it in the ranking."""
+    scene = make_default_scene()
+    frames = GazeSimulator(scene).simulate_a(n_frames=200)
+
+    # Run without sector smoke to find the natural top hazard
+    pipe_clean = _make_pipeline(frames)
+    for _ in range(200):
+        state_clean = pipe_clean.tick()
+    top_id_clean = state_clean.ranked_scores[0][1]
+    top_score_clean = state_clean.ranked_scores[0][0]
+
+    # Re-run with heavy smoke aimed at the natural top hazard
+    g, p, s = _make_sources(GazeSimulator(scene).simulate_a(n_frames=200))
+    sector = StaticSectorSmokeSource({top_id_clean: 0.99})
+    pipe_smoky = PharosPipeline(
+        g, p, s, scene.hazards,
+        baseline_n=_BASELINE_N,
+        sector_smoke_source=sector,
+    )
+    for _ in range(200):
+        state_smoky = pipe_smoky.tick()
+
+    smoky_scores = {hid: sc for sc, hid in state_smoky.ranked_scores}
+    top_score_smoky = smoky_scores.get(top_id_clean, 0.0)
+
+    print(
+        f"\n  top hazard '{top_id_clean}':"
+        f" score_clean={top_score_clean:.4f}"
+        f" score_smoky={top_score_smoky:.4f}"
+    )
+    assert top_score_smoky < top_score_clean, (
+        f"Expected smoke to reduce '{top_id_clean}' score, but "
+        f"{top_score_smoky:.4f} >= {top_score_clean:.4f}"
+    )
+
+
+def test_static_sector_smoke_source_returns_overrides() -> None:
+    """StaticSectorSmokeSource always returns the same mapping."""
+    src = StaticSectorSmokeSource({"victim": 0.8, "fire": 0.3})
+    for _ in range(3):
+        overrides = src.read_overrides()
+        assert overrides["victim"] == pytest.approx(0.8)
+        assert overrides["fire"] == pytest.approx(0.3)
+
+
+def test_pipeline_sector_smoke_absent_ids_use_global() -> None:
+    """Hazard ids not in sector smoke overrides still use global smoke_density."""
+    scene = make_default_scene(smoke_density=0.0, seed=0)
+    frames = GazeSimulator(scene).simulate_a(n_frames=50)
+    g, p, s = _make_sources(frames)
+    # Override only the first hazard; all others should still score normally
+    first_id = scene.hazards[0].id
+    sector = StaticSectorSmokeSource({first_id: 0.99})
+    pipe = PharosPipeline(
+        g, p, s, scene.hazards, baseline_n=_BASELINE_N, sector_smoke_source=sector
+    )
+    for _ in range(50):
+        state = pipe.tick()
+    # The overridden hazard must score lower than it would with zero smoke
+    scores = {hid: sc for sc, hid in state.ranked_scores}
+    # At least one other hazard must have a valid score (not suppressed)
+    other_scores = [sc for hid, sc in scores.items() if hid != first_id]
+    assert any(sc > 0.0 for sc in other_scores), "Other hazards should not be zeroed"

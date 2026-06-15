@@ -119,6 +119,14 @@ class PriorityQueueEngine:
         self._weights = weights if weights is not None else ScoringWeights()
         self._ranked: list[tuple[float, Hazard]] = []
 
+    def set_top_k(self, k: int) -> None:
+        """Update the active-item cap without rebuilding the queue."""
+        self.top_k = max(1, k)
+
+    def set_weights(self, weights: ScoringWeights) -> None:
+        """Replace the scoring weights; takes effect on the next update() call."""
+        self._weights = weights
+
     def update(self, hazards: list[Hazard], context: ScoringContext) -> None:
         """Re-score every hazard and re-sort the internal queue descending."""
         scored = [

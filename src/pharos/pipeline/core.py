@@ -10,9 +10,57 @@ import numpy.typing as npt
 
 from pharos.cogload.core import cognitive_load_index, extract_features, preprocess_pupil
 from pharos.entropy.core import stationary_entropy, transition_entropy
-from pharos.io.core import GazeSource, PupilSource
+from pharos.io.core import GazeSource, PupilSource, SectorSmokeSource
 from pharos.priority.core import Hazard, PriorityQueueEngine, ScoringContext, ScoringWeights
 from pharos.sensing.core import SensingSource, density_to_visibility, scattering_to_density
+
+# ── CogLoadAdaptation ─────────────────────────────────────────────────────────
+
+
+@dataclass
+class CogLoadAdaptation:
+    """Thresholds that feed cognitive load back into the HUD density and scoring.
+
+    mid_threshold  — CLI ≥ this reduces active item count by 1   (default 0.40)
+    high_threshold — CLI ≥ this forces top_k = 1                  (default 0.70)
+    weight_shift   — under high load, w_priority += shift and
+                     w_salience -= shift to sharpen life-criticality focus
+                     (default 0.10)
+    """
+
+    mid_threshold: float = 0.40
+    high_threshold: float = 0.70
+    weight_shift: float = 0.10
+
+
+def _effective_top_k(cli: float, base_k: int, adapt: CogLoadAdaptation) -> int:
+    """Derive display top-k from cognitive load index."""
+    if cli >= adapt.high_threshold:
+        return 1
+    if cli >= adapt.mid_threshold:
+        return max(1, base_k - 1)
+    return base_k
+
+
+def _shifted_weights(
+    cli: float, base: ScoringWeights, adapt: CogLoadAdaptation
+) -> ScoringWeights:
+    """Return weights with priority boosted and salience suppressed under high load.
+
+    Under high cognitive load the HUD narrows focus to life-critical items
+    (high priority) and suppresses perceptually salient but less critical items.
+    """
+    if cli < adapt.high_threshold:
+        return base
+    shift = adapt.weight_shift
+    return ScoringWeights(
+        w_priority=min(1.0, base.w_priority + shift),
+        w_salience=max(0.0, base.w_salience - shift),
+        w_expectancy=base.w_expectancy,
+        w_difficulty=base.w_difficulty,
+        visibility_sensitivity=base.visibility_sensitivity,
+    )
+
 
 # ── HudState ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +88,7 @@ class HudState:
     visibility: float
     gaze_entropy_hs: float
     gaze_entropy_ht: float
+    display_top_k: int = 2
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serialisable dict.
@@ -63,6 +112,7 @@ class HudState:
             "visibility": self.visibility,
             "gaze_entropy_hs": self.gaze_entropy_hs,
             "gaze_entropy_ht": self.gaze_entropy_ht,
+            "display_top_k": self.display_top_k,
         }
 
 
@@ -83,6 +133,7 @@ class _PipelineConfig:
     baseline_n: int
     top_k: int
     scoring_weights: ScoringWeights | None
+    cogload_adaptation: CogLoadAdaptation
 
 
 class PharosPipeline:
@@ -106,11 +157,15 @@ class PharosPipeline:
         baseline_n: int = 25,
         top_k: int = 2,
         scoring_weights: ScoringWeights | None = None,
+        cogload_adaptation: CogLoadAdaptation | None = None,
+        sector_smoke_source: SectorSmokeSource | None = None,
     ) -> None:
         self._gaze = gaze_source
         self._pupil = pupil_source
         self._sensing = sensing_source
         self._hazards = hazards
+        self._sector_smoke = sector_smoke_source
+        self._base_weights = scoring_weights if scoring_weights is not None else ScoringWeights()
         self._cfg = _PipelineConfig(
             screen_size=screen_size,
             bin_size=bin_size,
@@ -119,6 +174,9 @@ class PharosPipeline:
             baseline_n=baseline_n,
             top_k=top_k,
             scoring_weights=scoring_weights,
+            cogload_adaptation=(
+                cogload_adaptation if cogload_adaptation is not None else CogLoadAdaptation()
+            ),
         )
         self._engine = PriorityQueueEngine(top_k=top_k, weights=scoring_weights)
         # buffers store plain tuples; converted to ndarray on demand
@@ -152,7 +210,23 @@ class PharosPipeline:
         hs, ht = self._compute_entropy()
         cli = self._compute_cogload()
 
-        ctx = ScoringContext(smoke_density=density, visibility=visibility)
+        # ── cognitive load closed-loop: adapt top_k and scoring weights ──────
+        adapt = self._cfg.cogload_adaptation
+        eff_k = _effective_top_k(cli, self._cfg.top_k, adapt)
+        eff_weights = _shifted_weights(cli, self._base_weights, adapt)
+        self._engine.set_top_k(eff_k)
+        self._engine.set_weights(eff_weights)
+
+        # ── per-hazard directional smoke ──────────────────────────────────────
+        smoke_overrides: dict[str, float] = {}
+        if self._sector_smoke is not None:
+            smoke_overrides = self._sector_smoke.read_overrides()
+
+        ctx = ScoringContext(
+            smoke_density=density,
+            visibility=visibility,
+            hazard_smoke_overrides=smoke_overrides,
+        )
         self._engine.update(self._hazards, ctx)
 
         ranked = self._engine.ranked_queue()
@@ -165,6 +239,7 @@ class PharosPipeline:
             visibility=visibility,
             gaze_entropy_hs=hs,
             gaze_entropy_ht=ht,
+            display_top_k=eff_k,
         )
 
     # ── private helpers ───────────────────────────────────────────────────────
