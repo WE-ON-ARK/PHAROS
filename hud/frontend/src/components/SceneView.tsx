@@ -90,7 +90,7 @@ export function SceneView({ frame, hazards, trail }: Props) {
       ref={canvasRef}
       width={800}
       height={600}
-      style={{ display: "block", width: "100%", borderRadius: 4 }}
+      style={{ display: "block", width: "100%", borderRadius: 20 }}
     />
   );
 }

@@ -20,6 +20,9 @@ _TEAM_CACHE: list[dict[str, Any]] = []
 
 _VALID_SCENARIOS: frozenset[str] = frozenset({"a", "b"})
 
+# Only one WebSocket may hold the single physical camera at a time.
+_camera_in_use: bool = False
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -120,3 +123,63 @@ async def ws_team(ws: WebSocket, fps: float = 10.0) -> None:
             await asyncio.sleep(interval)
     except WebSocketDisconnect:
         pass
+
+
+@app.websocket("/ws/camera")
+async def ws_camera(ws: WebSocket, fps: float = 15.0) -> None:
+    """Stream the live webcam HUD: annotated frame (JPEG) + HudState metrics.
+
+    Each message is {image, hud, detected}.  The browser draws its own
+    design-styled metrics panel from `hud`; `image` is the camera view with
+    eye/pupil markers.  Closes with an {error} payload if OpenCV or the camera
+    is unavailable, or if another client already holds the device.
+    """
+    await ws.accept()
+    global _camera_in_use
+
+    # Lazy import keeps OpenCV an optional dependency for the rest of the API.
+    try:
+        from pharos.vision.camera import CameraFeed
+        from pharos.vision.render import draw_camera_view, encode_jpeg_base64
+        from pharos.vision.runner import build_pipeline
+    except ImportError as exc:
+        await ws.send_json({"error": f"camera support unavailable: {exc}"})
+        await ws.close(code=1011)
+        return
+
+    if _camera_in_use:
+        await ws.send_json({"error": "camera already in use by another client"})
+        await ws.close(code=1008)
+        return
+
+    try:
+        feed = CameraFeed(camera_index=0, screen_size=_SCENE.screen_size)
+    except RuntimeError as exc:
+        await ws.send_json({"error": f"could not open camera: {exc}"})
+        await ws.close(code=1011)
+        return
+
+    _camera_in_use = True
+    pipeline = build_pipeline(feed, _SCENE.hazards, _SCENE.screen_size)
+    interval = 1.0 / max(fps, 0.1)
+    loop = asyncio.get_event_loop()
+
+    def _step() -> dict[str, Any]:
+        state = pipeline.tick()
+        vf = feed.latest()
+        return {
+            "hud": state.to_dict(),
+            "image": encode_jpeg_base64(draw_camera_view(vf)),
+            "detected": vf.detected,
+        }
+
+    try:
+        while pipeline.can_tick():
+            payload = await loop.run_in_executor(None, _step)
+            await ws.send_json(payload)
+            await asyncio.sleep(interval)
+    except (WebSocketDisconnect, StopIteration):
+        pass
+    finally:
+        feed.release()
+        _camera_in_use = False

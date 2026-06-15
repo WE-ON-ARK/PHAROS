@@ -27,6 +27,9 @@
 | **PeerStatus** | 대원의 해소된 운영 상태. OK < OVERLOAD < DISTRESS < DOWN < LOST. OK/OVERLOAD/LOST는 코디네이터가 도출, DISTRESS/DOWN은 자가보고 가능. |
 | **TeamCoordinator** | TeammateState를 집계하고 돌변상황 이벤트를 도출하는 순수·동기 코어. ingest(상태 갱신)·tick(heartbeat 스윕)·snapshot(팀 뷰)으로 구성. 전송 계층(WebSocket)은 이 코어를 감싼다. |
 | **TeamSnapshot** | 코디네이터가 출력하는 팀 전체 집계 뷰. 각 대원의 PeerView(상태·침묵시간)와 최근 이벤트 피드를 포함. 지휘 HUD와의 JSON 계약 (HudState의 팀 버전). |
+| **CameraFeed** | 웹캠 프레임을 캡처·추론해 VisionFrame(시선·동공직경·연기proxy)으로 변환하는 어댑터. 틱당 1프레임 캡처, 가짜검출 시 EMA로 직전 값 유지. 세 카메라 Source(Gaze/Pupil/Sensing)가 이 피드를 공유. |
+| **dark-channel haze proxy** | 단일 장면 카메라에서 Tyndall 산란 강도를 대체하는 추정. 연기가 픽셀 최소채널 바닥값(airlight)을 끌어올리므로 dark channel 평균을 [0,1] 연기 proxy로 사용. |
+| **gaze gain (uncalibrated mapping)** | Haar 눈 ROI 내 동공 중심의 정규화 오프셋(±1)을 화면 좌표로 증폭하는 계수. 0 오프셋=화면 중앙. 개인 보정 없는 근사 매핑. |
 
 ---
 
@@ -64,7 +67,8 @@ src/pharos/
 ├── priority/   # STOM 점수화 + PriorityQueueEngine
 ├── pipeline/   # PharosPipeline.tick() 오케스트레이터
 ├── io/         # GazeSource, PupilSource, SensingSource 어댑터 인터페이스
-└── comms/      # TeamCoordinator: 대원 상태 집계 + 돌변상황 이벤트 (팀 메시 코어)
+├── comms/      # TeamCoordinator: 대원 상태 집계 + 돌변상황 이벤트 (팀 메시 코어)
+└── vision/     # 실제 웹캠 입력 경로: 이미지→시선·동공·연기 추정 + 카메라 어댑터 + 라이브 HUD
 sim/            # 합성 장면·시선·동공·산란 시뮬레이터
 eval/           # 2×2 실험 러너 + 통계 + 리포트
 hud/            # 웹 기반 HUD 프론트엔드

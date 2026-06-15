@@ -1,18 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchReplay, fetchScene } from "./api";
+import { CameraView } from "./components/CameraView";
 import { Controls } from "./components/Controls";
 import { EventFeed } from "./components/EventFeed";
 import { MetricsPanel } from "./components/MetricsPanel";
 import { PriorityList } from "./components/PriorityList";
 import { SceneView, TRAIL_LENGTH } from "./components/SceneView";
 import { TeamMap } from "./components/TeamMap";
+import { useCameraWS } from "./hooks/useCameraWS";
 import { useTeamWS } from "./hooks/useTeamWS";
+import { colors, font, radius, statusColor } from "./theme";
 import type { HazardInfo, HudFrame, Scenario } from "./types";
 
 const BASE_INTERVAL_MS = 50; // matches dt=0.05s
 const TEAM_FPS = 20;
+const CAMERA_FPS = 15;
 
-type AppMode = "replay" | "team";
+type AppMode = "replay" | "team" | "camera";
+
+const MODE_LABEL: Record<AppMode, string> = {
+  replay: "Replay",
+  team: "Team Live",
+  camera: "Live Camera",
+};
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>("replay");
@@ -25,17 +35,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Team live mode
   const teamSnap = useTeamWS(TEAM_FPS, mode === "team");
+  const { message: cameraMsg, error: cameraErr } = useCameraWS(
+    CAMERA_FPS,
+    mode === "camera"
+  );
 
-  // load scene hazard positions once
   useEffect(() => {
     fetchScene()
       .then((s) => setHazards(s.hazards))
       .catch(console.error);
   }, []);
 
-  // load replay data when scenario changes
   useEffect(() => {
     if (mode !== "replay") return;
     setLoading(true);
@@ -49,7 +60,6 @@ export default function App() {
       .catch(console.error);
   }, [scenario, mode]);
 
-  // playback loop
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!isPlaying || frames.length === 0) return;
@@ -68,24 +78,38 @@ export default function App() {
     };
   }, [isPlaying, speed, frames.length]);
 
-  const handleScenarioChange = useCallback((s: Scenario) => {
-    setScenario(s);
-  }, []);
-
+  const handleScenarioChange = useCallback((s: Scenario) => setScenario(s), []);
   const handleRestart = useCallback(() => {
     setFrameIdx(0);
     setIsPlaying(false);
   }, []);
 
   const currentFrame = frames[frameIdx] ?? null;
-
   const trail: [number, number][] = frames
     .slice(Math.max(0, frameIdx - TRAIL_LENGTH + 1), frameIdx + 1)
     .map((f) => f.fixation);
 
-  const headerStatus = mode === "team"
-    ? (teamSnap ? `Team Live · t=${teamSnap.timestamp.toFixed(1)}s` : "Connecting…")
-    : loading ? "Loading…" : `Scenario ${scenario.toUpperCase()} ready`;
+  const headerStatus =
+    mode === "team"
+      ? teamSnap
+        ? `Team Live · t=${teamSnap.timestamp.toFixed(1)}s`
+        : "Connecting…"
+      : mode === "camera"
+        ? cameraErr
+          ? "Camera offline"
+          : cameraMsg
+            ? "Live Camera · streaming"
+            : "Connecting…"
+        : loading
+          ? "Loading…"
+          : `Scenario ${scenario.toUpperCase()} ready`;
+
+  const statusOk =
+    mode === "team"
+      ? Boolean(teamSnap)
+      : mode === "camera"
+        ? Boolean(cameraMsg) && !cameraErr
+        : !loading;
 
   return (
     <div
@@ -93,51 +117,57 @@ export default function App() {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0f172a",
-        color: "#f1f5f9",
-        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+        background: colors.canvasDark,
+        color: colors.onDark,
+        fontFamily: font.body,
         overflow: "hidden",
       }}
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "8px 20px",
-          background: "#020617",
-          borderBottom: "1px solid #1e293b",
-          gap: 12,
+          padding: "16px 24px",
+          background: colors.canvasDark,
+          borderBottom: `1px solid ${colors.hairlineDark}`,
+          gap: 16,
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "0.08em", color: "#818cf8" }}>
+        <span
+          style={{
+            fontFamily: font.display,
+            fontWeight: 600,
+            fontSize: 26,
+            letterSpacing: "-0.01em",
+            color: colors.onDark,
+          }}
+        >
           PHAROS
         </span>
-        <span style={{ fontSize: 11, color: "#475569" }}>
+        <span style={{ fontSize: 12, color: colors.stone, maxWidth: 280, lineHeight: 1.4 }}>
           Priority · Hazard · Attention · Reorganizing · Overload · Suppression
         </span>
 
-        {/* Mode tabs */}
-        <div style={{ display: "flex", gap: 4, marginLeft: 20 }}>
-          {(["replay", "team"] as AppMode[]).map((m) => (
+        {/* Mode tabs — pill nav */}
+        <div style={{ display: "flex", gap: 8, marginLeft: 24 }}>
+          {(["replay", "team", "camera"] as AppMode[]).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
               style={{
-                padding: "3px 12px",
-                borderRadius: 4,
-                border: "1px solid",
-                borderColor: mode === m ? "#818cf8" : "#1e293b",
-                background: mode === m ? "#1e1b4b" : "transparent",
-                color: mode === m ? "#a5b4fc" : "#64748b",
-                fontSize: 11,
+                padding: "8px 18px",
+                borderRadius: radius.full,
+                border: `1px solid ${mode === m ? colors.primary : colors.hairlineDark}`,
+                background: mode === m ? colors.primary : "transparent",
+                color: mode === m ? colors.onPrimary : colors.onDarkMute,
+                fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
+                fontFamily: "inherit",
               }}
             >
-              {m === "replay" ? "Replay" : "Team Live"}
+              {MODE_LABEL[m]}
             </button>
           ))}
         </div>
@@ -145,12 +175,21 @@ export default function App() {
         <span
           style={{
             marginLeft: "auto",
-            fontSize: 12,
-            color: mode === "team"
-              ? (teamSnap ? "#22c55e" : "#f59e0b")
-              : (loading ? "#f59e0b" : "#22c55e"),
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 14,
+            color: colors.onDarkMute,
           }}
         >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: radius.full,
+              background: statusOk ? colors.lightGreen : colors.warning,
+            }}
+          />
           {headerStatus}
         </span>
       </div>
@@ -159,19 +198,27 @@ export default function App() {
       {mode === "replay" && (
         <>
           <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 24,
+              }}
+            >
               <SceneView frame={currentFrame} hazards={hazards} trail={trail} />
             </div>
             <div
               style={{
-                width: 260,
+                width: 320,
                 display: "flex",
                 flexDirection: "column",
-                borderLeft: "1px solid #1e293b",
+                borderLeft: `1px solid ${colors.hairlineDark}`,
                 overflowY: "auto",
               }}
             >
-              <div style={{ borderBottom: "1px solid #1e293b" }}>
+              <div style={{ borderBottom: `1px solid ${colors.hairlineDark}` }}>
                 <MetricsPanel frame={currentFrame} />
               </div>
               <PriorityList frame={currentFrame} />
@@ -195,12 +242,15 @@ export default function App() {
       {/* ── Team Live mode ── */}
       {mode === "team" && (
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* Map */}
-          <div style={{ flex: 1, overflowY: "auto", borderRight: "1px solid #1e293b" }}>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              borderRight: `1px solid ${colors.hairlineDark}`,
+            }}
+          >
             <TeamMap peers={teamSnap?.peers ?? []} />
           </div>
-
-          {/* Right panel: per-peer metrics + event feed */}
           <div
             style={{
               width: 320,
@@ -209,9 +259,23 @@ export default function App() {
               overflowY: "auto",
             }}
           >
-            {/* Peer status cards */}
-            <div style={{ borderBottom: "1px solid #1e293b", padding: "12px 16px" }}>
-              <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Peer Status</div>
+            <div
+              style={{
+                borderBottom: `1px solid ${colors.hairlineDark}`,
+                padding: "16px 20px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  color: colors.stone,
+                  marginBottom: 12,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Peer Status
+              </div>
               {(teamSnap?.peers ?? []).map((pv) => (
                 <div
                   key={pv.node_id}
@@ -219,30 +283,26 @@ export default function App() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "4px 0",
-                    fontSize: 12,
-                    borderBottom: "1px solid #0f172a",
+                    padding: "8px 0",
+                    fontSize: 14,
+                    borderBottom: `1px solid ${colors.hairlineDark}`,
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: "#e2e8f0" }}>{pv.node_id}</span>
-                  <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                  <span style={{ fontWeight: 600, color: colors.onDark }}>
+                    {pv.node_id}
+                  </span>
+                  <span style={{ fontSize: 13, color: colors.onDarkMute }}>
                     CLI {(pv.cognitive_load * 100).toFixed(0)}% ·{" "}
                     {pv.visibility.toFixed(1)} m
                   </span>
                   <span
                     style={{
-                      padding: "1px 6px",
-                      borderRadius: 3,
-                      fontSize: 10,
+                      padding: "3px 10px",
+                      borderRadius: radius.full,
+                      fontSize: 11,
                       fontWeight: 700,
-                      background:
-                        pv.status === "ok" ? "#166534" :
-                        pv.status === "overload" ? "#78350f" :
-                        pv.status === "lost" ? "#1e293b" : "#7f1d1d",
-                      color:
-                        pv.status === "ok" ? "#4ade80" :
-                        pv.status === "overload" ? "#fbbf24" :
-                        pv.status === "lost" ? "#64748b" : "#fca5a5",
+                      background: statusColor[pv.status] ?? colors.stone,
+                      color: colors.onPrimary,
                     }}
                   >
                     {pv.status.toUpperCase()}
@@ -250,12 +310,13 @@ export default function App() {
                 </div>
               ))}
             </div>
-
-            {/* Event feed */}
             <EventFeed events={teamSnap?.recent_events ?? []} />
           </div>
         </div>
       )}
+
+      {/* ── Live Camera mode ── */}
+      {mode === "camera" && <CameraView message={cameraMsg} error={cameraErr} />}
     </div>
   );
 }

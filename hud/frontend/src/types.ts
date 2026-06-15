@@ -16,6 +16,16 @@ export interface HudFrame {
   fixation: [number, number];
 }
 
+// Metric-only view of a HudState (the camera stream omits `fixation`).
+export type HudMetrics = Omit<HudFrame, "fixation">;
+
+export interface CameraMessage {
+  hud?: HudMetrics;
+  image?: string;
+  detected?: boolean;
+  error?: string;
+}
+
 export interface HazardInfo {
   id: string;
   kind: string;

@@ -1,4 +1,5 @@
 import type { Scenario } from "../types";
+import { colors, radius } from "../theme";
 
 interface Props {
   scenario: Scenario;
@@ -27,13 +28,16 @@ export function Controls({
   speed,
   onSpeedChange,
 }: Props) {
-  const btnBase: React.CSSProperties = {
-    padding: "5px 12px",
-    borderRadius: 4,
-    border: "1px solid #334155",
+  const pill: React.CSSProperties = {
+    padding: "8px 16px",
+    borderRadius: radius.full,
+    border: `1px solid ${colors.hairlineDark}`,
     cursor: "pointer",
-    fontSize: 12,
-    fontWeight: 500,
+    fontSize: 14,
+    fontWeight: 600,
+    background: colors.surfaceElevated,
+    color: colors.onDarkMute,
+    fontFamily: "inherit",
   };
 
   return (
@@ -41,24 +45,24 @@ export function Controls({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "8px 16px",
-        background: "#0f172a",
-        borderTop: "1px solid #1e293b",
+        gap: 14,
+        padding: "14px 24px",
+        background: colors.canvasDark,
+        borderTop: `1px solid ${colors.hairlineDark}`,
         flexWrap: "wrap",
       }}
     >
-      {/* Scenario toggle */}
-      <div style={{ display: "flex", gap: 4 }}>
+      {/* Scenario toggle — cobalt accent marks the active condition */}
+      <div style={{ display: "flex", gap: 6 }}>
         {(["a", "b"] as Scenario[]).map((s) => (
           <button
             key={s}
             onClick={() => onScenarioChange(s)}
             style={{
-              ...btnBase,
-              background: scenario === s ? "#6366f1" : "#1e293b",
-              color: scenario === s ? "#fff" : "#94a3b8",
-              borderColor: scenario === s ? "#6366f1" : "#334155",
+              ...pill,
+              background: scenario === s ? colors.primary : colors.surfaceElevated,
+              color: scenario === s ? colors.onPrimary : colors.onDarkMute,
+              borderColor: scenario === s ? colors.primary : colors.hairlineDark,
             }}
           >
             Scenario {s.toUpperCase()}
@@ -66,18 +70,21 @@ export function Controls({
         ))}
       </div>
 
-      <div style={{ width: 1, height: 24, background: "#334155" }} />
+      <div style={{ width: 1, height: 28, background: colors.hairlineDark }} />
 
-      {/* Playback controls */}
-      <button
-        onClick={onRestart}
-        style={{ ...btnBase, background: "#1e293b", color: "#94a3b8" }}
-      >
+      {/* Playback controls — Play is the white primary pill */}
+      <button onClick={onRestart} style={{ ...pill, padding: "8px 14px" }}>
         ⏮
       </button>
       <button
         onClick={onPlayPause}
-        style={{ ...btnBase, background: "#1e293b", color: "#f1f5f9", minWidth: 60 }}
+        style={{
+          ...pill,
+          minWidth: 96,
+          background: colors.canvasLight,
+          color: colors.canvasDark,
+          borderColor: colors.canvasLight,
+        }}
       >
         {isPlaying ? "⏸ Pause" : "▶ Play"}
       </button>
@@ -89,25 +96,32 @@ export function Controls({
         max={Math.max(0, totalFrames - 1)}
         value={frameIdx}
         onChange={(e) => onSeek(Number(e.target.value))}
-        style={{ flex: 1, minWidth: 80, accentColor: "#6366f1" }}
+        style={{ flex: 1, minWidth: 100, accentColor: colors.primary }}
       />
-      <span style={{ fontSize: 11, color: "#64748b", fontVariantNumeric: "tabular-nums", minWidth: 60 }}>
+      <span
+        style={{
+          fontSize: 13,
+          color: colors.stone,
+          fontVariantNumeric: "tabular-nums",
+          minWidth: 64,
+        }}
+      >
         {frameIdx + 1} / {totalFrames}
       </span>
 
       {/* Speed selector */}
-      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "#64748b" }}>Speed:</span>
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <span style={{ fontSize: 13, color: colors.stone }}>Speed:</span>
         {SPEEDS.map((s) => (
           <button
             key={s}
             onClick={() => onSpeedChange(s)}
             style={{
-              ...btnBase,
-              padding: "3px 7px",
-              background: speed === s ? "#334155" : "transparent",
-              color: speed === s ? "#f1f5f9" : "#64748b",
-              borderColor: speed === s ? "#475569" : "transparent",
+              ...pill,
+              padding: "6px 12px",
+              background: speed === s ? colors.surfaceElevated : "transparent",
+              color: speed === s ? colors.onDark : colors.stone,
+              borderColor: speed === s ? colors.hairlineDark : "transparent",
             }}
           >
             {s}×
