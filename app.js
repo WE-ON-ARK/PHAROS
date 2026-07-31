@@ -109,7 +109,39 @@
     setTimeout(sweep, 1500);
   }
 
-  /* ── 3. SIMULATOR ──────────────────────────────────────── */
+  /* ── 3. 발표 영상 ───────────────────────────────────────── */
+  var video = document.getElementById('promo');
+  var cover = document.getElementById('filmCover');
+  if (video && cover) {
+    var durOut = document.getElementById('filmDur');
+
+    var showDuration = function () {
+      if (!durOut || !isFinite(video.duration) || !video.duration) return;
+      var s = Math.round(video.duration);
+      durOut.textContent = '· ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    };
+    video.addEventListener('loadedmetadata', showDuration);
+    showDuration();
+
+    var hideCover = function () { cover.classList.add('is-gone'); };
+    cover.addEventListener('click', function () {
+      hideCover();
+      var p = video.play();
+      if (p && p.catch) p.catch(function () { video.controls = true; });
+    });
+    video.addEventListener('play', hideCover);
+
+    /* 다른 곳으로 스크롤하면 재생을 멈춘다 */
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting && !video.paused) video.pause();
+        });
+      }, { threshold: 0.15 }).observe(video);
+    }
+  }
+
+  /* ── 4. SIMULATOR ──────────────────────────────────────── */
   var sim = document.getElementById('sim');
   if (!sim) return;
 

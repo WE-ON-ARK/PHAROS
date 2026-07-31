@@ -30,6 +30,7 @@
       <span>PHAROS</span>
     </a>
     <nav class="nav__links" id="navLinks" aria-label="주요 섹션">
+      <a href="#video">영상</a>
       <a href="#problem">문제</a>
       <a href="#solution">해법</a>
       <a href="#demo">시뮬레이터</a>
@@ -90,6 +91,39 @@
   </div>
 
   <a class="hero__scroll" href="#problem" aria-label="아래로 스크롤"><span></span></a>
+</section>
+
+<!-- ═══════════════ VIDEO ═══════════════ -->
+<section class="sec sec--film" id="video">
+  <div class="wrap">
+    <p class="sec__idx">Presentation / 발표 영상</p>
+    <h2 class="sec__title reveal">먼저, <span class="hl">영상으로</span></h2>
+
+    <figure class="film reveal">
+      <div class="film__stage">
+        <video id="promo" class="film__video" controls playsinline preload="metadata"
+               width="852" height="480">
+          <source src="assets/pharos-presentation.mp4" type="video/mp4">
+          <p>이 브라우저는 동영상 재생을 지원하지 않습니다.
+            <a href="assets/pharos-presentation.mp4">영상을 내려받아 보실 수 있습니다.</a></p>
+        </video>
+
+        <button class="film__cover" id="filmCover" type="button" aria-label="PHAROS 발표 영상 재생">
+          <span class="film__scan" aria-hidden="true"></span>
+          <span class="film__play" aria-hidden="true"><i></i></span>
+          <span class="film__meta">
+            <b>PHAROS 발표 영상</b>
+            <i>TEAM ARK · 제8회 한국코드페어 SW공모전 <em id="filmDur"></em></i>
+          </span>
+          <span class="film__label">재생</span>
+        </button>
+      </div>
+      <figcaption>
+        <span>2026 제8회 한국코드페어 SW공모전 2차 온라인 예선 발표 영상</span>
+        <a href="assets/pharos-presentation.mp4" download>내려받기 ↓</a>
+      </figcaption>
+    </figure>
+  </div>
 </section>
 
 <!-- ═══════════════ PROBLEM ═══════════════ -->
