@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PHAROS — 소방관 인지부하 저감 지능형 HUD 시스템 | TEAM ARK</title>
+<meta name="description" content="PHAROS는 소방관의 시선 엔트로피와 동공 기반 인지부하(CLI), 틴들 산란 기반 가시거리를 실시간 융합해 지금 반드시 봐야 할 정보만 HUD에 남기는 폐루프 적응형 소방 보조 시스템입니다. TEAM ARK · 제8회 한국코드페어 SW공모전.">
+<meta name="theme-color" content="#07090B">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PHAROS — 소방관 인지부하 저감 지능형 HUD 시스템">
+<meta property="og:description" content="시선 엔트로피 최소화 × 틴들 센싱. 대원이 처리할 수 있는 만큼만 보여주는 폐루프 적응형 HUD.">
+<meta property="og:image" content="assets/helmet-render.jpg">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.className += ' js';</script>
+</head>
+<body>
+
+<a class="skip" href="#main">본문 바로가기</a>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <div class="nav__bar">
+    <a class="nav__brand" href="#top">
+      <img src="assets/logo.svg" alt="" width="26" height="26">
+      <span>PHAROS</span>
+    </a>
+    <nav class="nav__links" id="navLinks" aria-label="주요 섹션">
+      <a href="#problem">문제</a>
+      <a href="#solution">해법</a>
+      <a href="#demo">시뮬레이터</a>
+      <a href="#algorithm">알고리즘</a>
+      <a href="#hardware">하드웨어</a>
+      <a href="#validation">검증</a>
+      <a href="#team">팀</a>
+    </nav>
+    <a class="nav__cta" href="https://github.com/WE-ON-ARK/PHAROS" target="_blank" rel="noopener">GitHub ↗</a>
+    <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks" aria-label="메뉴 열기">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav__progress" id="navProgress" aria-hidden="true"></div>
+</header>
+
+<main id="main">
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero" id="top">
+  <div class="hero__beam" aria-hidden="true"></div>
+  <div class="hero__fog" aria-hidden="true"></div>
+  <div class="hero__grid" aria-hidden="true"></div>
+
+  <div class="hero__inner wrap">
+    <p class="eyebrow reveal">TEAM ARK · 제8회 한국코드페어 SW공모전 · 대전대신고등학교</p>
+
+    <h1 class="hero__title reveal" data-delay="1">
+      <span class="hero__word">PHAROS</span>
+    </h1>
+
+    <p class="hero__acronym reveal" data-delay="2">
+      <b>P</b>riority · <b>H</b>azard · <b>A</b>ttention · <b>R</b>eorganizing · <b>O</b>verload · <b>S</b>uppression
+    </p>
+
+    <h2 class="hero__sub reveal" data-delay="3">
+      소방관 인지부하 저감을 위한<br>
+      <em>시선 엔트로피 최소화</em> 및 <em>틴들 센싱</em> 기반 지능형 HUD 시스템
+    </h2>
+
+    <p class="hero__lead reveal" data-delay="4">
+      화재 현장의 문제는 정보가 부족한 것이 아니라 <b>너무 많다는 것</b>입니다.
+      PHAROS는 대원의 시선·동공과 방향별 연기 농도를 실시간으로 읽어,
+      <b>지금 이 대원이 처리할 수 있는 만큼만</b> 남기고 나머지는 소리와 진동으로 옮깁니다.
+    </p>
+
+    <div class="hero__actions reveal" data-delay="5">
+      <a class="btn btn--primary" href="#demo">적응 엔진 직접 돌려보기</a>
+      <a class="btn" href="https://github.com/WE-ON-ARK/PHAROS" target="_blank" rel="noopener">소스코드 보기</a>
+    </div>
+
+    <ul class="hero__stats reveal" data-delay="6">
+      <li><b>42.6<span>%</span></b><span class="k">농연 방향상실·돌발위험 미인지 기인 사고</span></li>
+      <li><b>4<span>±1</span></b><span class="k">인간 작업기억 용량 (chunks)</span></li>
+      <li><b>99<span>개</span></b><span class="k">Stage 1–4 단위 테스트 누적 통과</span></li>
+      <li><b>0.0<span>%</span></b><span class="k">Ruff · Mypy · Pytest 오류율</span></li>
+    </ul>
+  </div>
+
+  <a class="hero__scroll" href="#problem" aria-label="아래로 스크롤"><span></span></a>
+</section>
+
+<!-- ═══════════════ PROBLEM ═══════════════ -->
+<section class="sec" id="problem">
+  <div class="wrap">
+    <p class="sec__idx">01 / 문제 정의</p>
+    <h2 class="sec__title reveal">현장에서 무너지는 것은<br><span class="hl">시야가 아니라 인지 자원</span>입니다</h2>
+    <p class="sec__lead reveal">
+      화재 현장에 진입한 대원은 연기·화염·장애물·요구조자·붕괴 위험·탈출 경로·동료 위치를
+      동시에 처리해야 합니다. 그런데 그 순간 대원의 인지 자원은 평소보다 <b>더 적습니다</b>.
+    </p>
+
+    <div class="statgrid">
+      <article class="stat reveal">
+        <div class="stat__num">42.6<i>%</i></div>
+        <h3>농연으로 인한 방향 상실</h3>
+        <p>소방대원 순직·공상 사고 중 농연에 의한 방향 상실과 붕괴·플래시오버 등 돌발 위험 미인지에서 기인한 비율.</p>
+        <cite>소방청 사고 통계 분석</cite>
+      </article>
+      <article class="stat reveal">
+        <div class="stat__num">1.8<i>×</i></div>
+        <h3>정보 3개 → 5개</h3>
+        <p>화면에 동시에 표시되는 시각 정보가 3개에서 5개로 늘어날 때 판단 지연 시간이 약 1.8배 증가.</p>
+        <cite>Hick–Hyman Law</cite>
+      </article>
+      <article class="stat reveal">
+        <div class="stat__num">240<i>%</i></div>
+        <h3>고스트레스 인지 오류</h3>
+        <p>심박수 150 BPM 이상의 극한 스트레스 상황에서 정보 인지 오류율이 최대 240%까지 급증.</p>
+        <cite>인간공학 스트레스 연구</cite>
+      </article>
+      <article class="stat reveal">
+        <div class="stat__num">85–102<i>%</i></div>
+        <h3>거의 최대 심박</h3>
+        <p>모의 화재진압 실험에서 참가자의 최대 심박수는 연령예측 최대심박 대비 평균 85~102%에 도달.</p>
+        <cite>소방관 대상 모의 진압 실험</cite>
+      </article>
+    </div>
+
+    <div class="probgrid">
+      <article class="prob reveal">
+        <span class="prob__tag">01</span>
+        <h3>정보 과부하</h3>
+        <p>요구조자, 화점, 대피로, 붕괴 위험 등 다수의 정보를 동시에 처리해야 하며, HUD에 정보가 과도하게 표시되면 정작 즉각 대응해야 할 핵심 경고의 탐지가 지연됩니다.</p>
+      </article>
+      <article class="prob reveal">
+        <span class="prob__tag">02</span>
+        <h3>고정형 정보 제공</h3>
+        <p>기존 HUD는 대원의 인지 상태와 현장 가시성 변화에 관계없이 정보량과 표시 방식이 고정되어 있어, 상황에 따른 대응이 어렵습니다.</p>
+      </article>
+      <article class="prob reveal">
+        <span class="prob__tag">03</span>
+        <h3>시각 채널의 한계</h3>
+        <p>농연과 보호구 착용으로 시야가 제한된 상황에서도 기존 장비는 시각 중심으로 정보를 전달해, 필요한 정보가 보이지 않거나 누락될 가능성이 있습니다.</p>
+      </article>
+    </div>
+
+    <blockquote class="pull reveal">
+      <p>질문은 <s>“무엇을 더 보여줄 것인가”</s>가 아니라<br>
+      <b>“지금 이 대원이 처리할 수 있는 정보량은 얼마인가”</b>입니다.</p>
+    </blockquote>
+  </div>
+</section>
+
+<!-- ═══════════════ SOLUTION ═══════════════ -->
+<section class="sec sec--alt" id="solution">
+  <div class="wrap">
+    <p class="sec__idx">02 / 해법</p>
+    <h2 class="sec__title reveal">보여주는 장치가 아니라<br><span class="hl">덜어내는 장치</span></h2>
+    <p class="sec__lead reveal">
+      PHAROS는 센서값을 그대로 시각화하지 않습니다. 대원의 인지 상태(<b>얼마나 여유가 있는가</b>)와
+      방향별 가시성(<b>지금 그쪽이 보이는가</b>)을 먼저 판단한 뒤, 정보의 <b>순서 · 개수 · 출력 채널</b>을 바꿉니다.
+      그리고 출력 이후 달라진 시선과 동공을 다시 측정해 다음 출력에 반영합니다.
+    </p>
+
+    <ol class="loop" aria-label="폐루프 6계층">
+      <li class="loop__node reveal">
+        <span class="loop__n">01</span>
+        <h3>사용자 센싱</h3>
+        <p>IR 안구 카메라로 시선 좌표 · 동공 직경 · 눈 깜빡임을 수집</p>
+        <code>Gaze · Pupil · Blink</code>
+      </li>
+      <li class="loop__node reveal">
+        <span class="loop__n">02</span>
+        <h3>환경 센싱</h3>
+        <p>3방향 틴들 산란 챔버가 방향별 연기 농도를 동기 검파로 측정</p>
+        <code>Tyndall ×3 · IMU</code>
+      </li>
+      <li class="loop__node reveal">
+        <span class="loop__n">03</span>
+        <h3>상태 추론</h3>
+        <p>시선 엔트로피 H<sub>s</sub>/H<sub>t</sub>, 인지부하 CLI, 가시거리 V 산출</p>
+        <code>H · CLI · V</code>
+      </li>
+      <li class="loop__node reveal">
+        <span class="loop__n">04</span>
+        <h3>우선순위 판단</h3>
+        <p>STOM/SEEV 모델로 위협 대상의 전술 가치를 실시간 재정렬</p>
+        <code>STOM / SEEV</code>
+      </li>
+      <li class="loop__node reveal">
+        <span class="loop__n">05</span>
+        <h3>적응형 출력</h3>
+        <p>Dynamic Top-K로 표시 개수를 줄이고, 막힌 정보는 골전도·햅틱으로 이관</p>
+        <code>Top-K · Cross-modal</code>
+      </li>
+      <li class="loop__node reveal">
+        <span class="loop__n">06</span>
+        <h3>팀 동기화</h3>
+        <p>대원별 CLI·위치·가시성을 메시망으로 지휘 HUD에 동기화</p>
+        <code>Mesh · Telemetry</code>
+      </li>
+    </ol>
+
+    <p class="loop__back reveal">
+      <span class="loop__backline" aria-hidden="true"></span>
+      출력 이후 변화한 시선·동공을 재측정 → <b>Closed-loop 피드백</b>
+    </p>
+
+    <div class="pillars">
+      <div class="pillar reveal">
+        <h3>① 인지 상태를 잰다</h3>
+        <p>시선의 분산도(정적 엔트로피)와 이동의 무질서도(전이 엔트로피), 동공 반응 기반 CLI로
+          <b>주의 불안정</b>과 <b>터널 비전</b>을 구분해 판정합니다.</p>
+      </div>
+      <div class="pillar reveal">
+        <h3>② 방향별로 잰다</h3>
+        <p>연기를 하나의 전역 값으로 다루지 않습니다. 전방·좌·우 각각의 가시거리를 역산해
+          <b>막힌 방향의 정보만</b> 선택적으로 강등합니다.</p>
+      </div>
+      <div class="pillar reveal">
+        <h3>③ 지우지 않고 옮긴다</h3>
+        <p>시야가 무너져도 위협·요구조자 표식은 삭제되지 않습니다. 골전도 입체 음향과
+          방향성 진동으로 <b>무손실 이관</b>됩니다.</p>
+      </div>
+      <div class="pillar reveal">
+        <h3>④ 대원이 결정한다</h3>
+        <p>AI는 행동을 강제하지 않는 <b>비개입형 보조</b>입니다. 측면 비상 스위치로 MAYDAY 수동 발신,
+          고정 모드 전환 등 제어권은 항상 대원에게 있습니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ DEMO ═══════════════ -->
+<section class="sec sec--demo" id="demo">
+  <div class="wrap">
+    <p class="sec__idx">03 / 인터랙티브</p>
+    <h2 class="sec__title reveal">적응 엔진을 직접 움직여 보세요</h2>
+    <p class="sec__lead reveal">
+      아래 시뮬레이터는 PHAROS 코어의 실제 수식(<code>V = V<sub>max</sub>·e<sup>−kρ</sup></code>,
+      <code>V<sub>i</sub> = B<sub>i</sub>(1−λρ<sub>i</sub>)</code>)을 그대로 사용합니다.
+      슬라이더를 움직이면 표시 개수 · 순위 · 출력 채널이 함께 바뀝니다.
+    </p>
+
+    <div class="sim" id="sim">
+      <!-- 왼쪽: 컨트롤 -->
+      <div class="sim__controls">
+        <div class="sim__presets">
+          <button type="button" class="chip" data-preset="normal">평시 진입</button>
+          <button type="button" class="chip" data-preset="stage4">Stage 4 재현</button>
+          <button type="button" class="chip" data-preset="blackout">전방향 농연</button>
+        </div>
+
+        <div class="ctl">
+          <label for="cli">인지부하 지수 <b>CLI</b></label>
+          <input type="range" id="cli" min="0" max="1" step="0.01" value="0.20">
+          <output id="cliOut">0.20</output>
+          <p class="ctl__hint">동공 변화율·팽창 진폭·도달 지연·깜빡임 결손의 가중 결합값. 0.45 초과 시 표시 항목 K가 2 → 1로 압축됩니다.</p>
+        </div>
+
+        <div class="ctl">
+          <label for="rf">전방 연기 농도 <b>ρ<sub>F</sub></b></label>
+          <input type="range" id="rf" min="0" max="1" step="0.01" value="0.10">
+          <output id="rfOut">0.10</output>
+        </div>
+        <div class="ctl">
+          <label for="rl">좌측 연기 농도 <b>ρ<sub>L</sub></b></label>
+          <input type="range" id="rl" min="0" max="1" step="0.01" value="0.10">
+          <output id="rlOut">0.10</output>
+        </div>
+        <div class="ctl">
+          <label for="rr">우측 연기 농도 <b>ρ<sub>R</sub></b></label>
+          <input type="range" id="rr" min="0" max="1" step="0.01" value="0.10">
+          <output id="rrOut">0.10</output>
+        </div>
+
+        <div class="vis">
+          <div class="vis__row"><span>전방 V<sub>F</sub></span><i id="vfBar"></i><b id="vfOut">—</b></div>
+          <div class="vis__row"><span>좌측 V<sub>L</sub></span><i id="vlBar"></i><b id="vlOut">—</b></div>
+          <div class="vis__row"><span>우측 V<sub>R</sub></span><i id="vrBar"></i><b id="vrOut">—</b></div>
+        </div>
+      </div>
+
+      <!-- 가운데: HUD 뷰 -->
+      <div class="sim__hud">
+        <div class="visor" id="visor" data-mode="NORMAL">
+          <div class="visor__smoke" id="visorSmoke" aria-hidden="true"></div>
+          <div class="visor__scan" aria-hidden="true"></div>
+          <div class="visor__frame" aria-hidden="true">
+            <span class="c c--tl"></span><span class="c c--tr"></span>
+            <span class="c c--bl"></span><span class="c c--br"></span>
+          </div>
+
+          <div class="visor__top">
+            <span class="mode" id="modeBadge">NORMAL</span>
+            <span class="visor__k">TOP-<b id="kOut">2</b></span>
+          </div>
+
+          <ul class="visor__items" id="hudItems"></ul>
+
+          <div class="visor__bottom" id="visorBottom">
+            <span class="ch" data-ch="hud">HUD</span>
+            <span class="ch" data-ch="audio">골전도</span>
+            <span class="ch" data-ch="haptic">햅틱</span>
+          </div>
+        </div>
+        <p class="sim__cap">대원 시야 하방 15° 단안 Micro-OLED에 투사되는 화면의 모식도</p>
+      </div>
+
+      <!-- 오른쪽: 우선순위 큐 -->
+      <div class="sim__queue">
+        <h3 class="queue__title">전술 우선순위 큐</h3>
+        <ol class="queue" id="queue"></ol>
+        <p class="queue__note" id="queueNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ALGORITHM ═══════════════ -->
+<section class="sec" id="algorithm">
+  <div class="wrap">
+    <p class="sec__idx">04 / 핵심 알고리즘</p>
+    <h2 class="sec__title reveal">다섯 개의 수식이<br><span class="hl">화면을 결정합니다</span></h2>
+
+    <div class="eqgrid">
+      <article class="eq reveal">
+        <header><span class="eq__no">01</span><h3>정적 시선 엔트로피 <em>H<sub>s</sub></em></h3></header>
+        <p class="eq__math">H<sub>s</sub> = −∑<sub>i=1</sub><sup>M</sup> p<sub>i</sub> log<sub>2</sub> p<sub>i</sub></p>
+        <p>관측 윈도우 동안 시선이 각 관심영역(AOI)에 머문 시간 비율 <i>p<sub>i</sub></i>의 분산도.
+          한 곳에 고착되면 0, 균등하게 흩어지면 정규화값이 1에 수렴합니다.</p>
+        <p class="eq__norm">정규화 <span>H<sub>s</sub><sup>norm</sup> = H<sub>s</sub> / log<sub>2</sub>M</span></p>
+      </article>
+
+      <article class="eq reveal">
+        <header><span class="eq__no">02</span><h3>시선전이 엔트로피 <em>H<sub>t</sub></em></h3></header>
+        <p class="eq__math">H<sub>t</sub> = −∑<sub>i</sub> π<sub>i</sub> ∑<sub>j≠i</sub> P<sub>ij</sub> log<sub>2</sub> P<sub>ij</sub></p>
+        <p>영역 간 이동 확률 행렬 <i>P<sub>ij</sub></i>의 불확실성. 규칙적인 왕복 탐색은 0,
+          무작위 탐색은 높은 값을 내어 <b>방향 감각 상실</b>을 판정합니다.</p>
+      </article>
+
+      <article class="eq reveal">
+        <header><span class="eq__no">03</span><h3>동공 기반 인지부하 <em>CLI</em></h3></header>
+        <p class="eq__math">CLI = w<sub>1</sub>N<sub>Δp</sub> + w<sub>2</sub>N<sub>peak</sub> + w<sub>3</sub>N<sub>lat</sub> + w<sub>4</sub>N<sub>blink</sub></p>
+        <p>기준 동공 직경비 변화량, 최대 팽창 진폭, 팽창 도달 지연, 깜빡임 결손도를 가중 결합.
+          가중치는 <b>w = (0.45, 0.25, 0.20, 0.10)</b>.</p>
+      </article>
+
+      <article class="eq reveal">
+        <header><span class="eq__no">04</span><h3>연기 농도와 가시거리 <em>ρ, V</em></h3></header>
+        <p class="eq__math">I<sub>s</sub> = I<sub>on</sub> − I<sub>off</sub> &nbsp;·&nbsp; S<sub>t</sub> = γI<sub>s,t</sub> + (1−γ)S<sub>t−1</sub></p>
+        <p class="eq__math">V = V<sub>max</sub> · e<sup>−kρ</sup></p>
+        <p>1 kHz 변조 동기 검파로 외광·화염 플리커를 물리적으로 제거하고, EMA 평활 후
+          Koschmieder 감쇄식으로 가시거리를 역산합니다.</p>
+      </article>
+
+      <article class="eq reveal eq--wide">
+        <header><span class="eq__no">05</span><h3>위험 우선순위와 채널 배분 <em>B, V<sub>i</sub>, A<sub>i</sub></em></h3></header>
+        <p class="eq__math">B<sub>i</sub> = w<sub>p</sub>P<sub>i</sub> + w<sub>s</sub>S<sub>i</sub> + w<sub>e</sub>E<sub>i</sub> + w<sub>c</sub>C<sub>i</sub> − w<sub>d</sub>D<sub>i</sub></p>
+        <p class="eq__math">V<sub>i</sub> = max(0, B<sub>i</sub>·(1 − λρ<sub>i</sub>)) &nbsp;&nbsp; A<sub>i</sub> = B<sub>i</sub>·λρ<sub>i</sub> + μ·CLI + ν·R<sub>i</sub></p>
+        <p>인명 구조 가치 · 현저성 · 공간 기대도 · 조치 난이도 · 신뢰도를 융합한 기본 점수 <i>B<sub>i</sub></i>에서,
+          해당 <b>방향의</b> 연기 농도만큼 시각 전달 가치 <i>V<sub>i</sub></i>를 깎고 그만큼 대체 채널 가중치 <i>A<sub>i</sub></i>로 옮깁니다.
+          표시 개수 <i>K</i>는 CLI에 따라 2 → 1로 압축되며, 경계에서의 화면 명멸을 막기 위해
+          <b>복귀 임계 0.38 · 유지 타이머 2초</b>의 히스테리시스를 커널 단에 구현했습니다.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ ARCHITECTURE ═══════════════ -->
+<section class="sec sec--alt" id="architecture">
+  <div class="wrap">
+    <p class="sec__idx">05 / 기술 아키텍처</p>
+    <h2 class="sec__title reveal">분석은 Python이,<br><span class="hl">표시는 React가</span></h2>
+    <p class="sec__lead reveal">
+      임베디드 타깃에서의 연산 효율과 웹 기반 GUI의 이식성을 함께 얻기 위해
+      실시간 분석 백엔드와 시각화 프론트엔드를 완전히 분리하고, WebSocket 한 줄로 이었습니다.
+    </p>
+
+    <div class="stack">
+      <article class="stage reveal">
+        <span class="stage__no">01</span>
+        <h3>INPUT &amp; REPLAY</h3>
+        <p class="stage__tech">Replay · Serial/UART · CSV/JSON</p>
+        <ul>
+          <li>시선 좌표 · 동공 직경 · Blink 수집</li>
+          <li>방향별 연기 센서값 입력</li>
+          <li>타임스탬프 기반 동기화</li>
+          <li>동일 인터페이스로 실제 센서 교체 가능</li>
+        </ul>
+      </article>
+      <article class="stage reveal">
+        <span class="stage__no">02</span>
+        <h3>ANALYSIS ENGINE</h3>
+        <p class="stage__tech">Python 3.11 · NumPy · SciPy · OpenCV</p>
+        <ul>
+          <li>정적 · 전이 시선 엔트로피 연산</li>
+          <li>동공 · Blink 기반 CLI 특징값 산출</li>
+          <li>EMA 기반 센서 노이즈 필터링</li>
+          <li>방향별 연기 농도 · 가시거리 추정</li>
+        </ul>
+      </article>
+      <article class="stage reveal">
+        <span class="stage__no">03</span>
+        <h3>REAL-TIME DATA BUS</h3>
+        <p class="stage__tech">FastAPI · WebSocket · JSON</p>
+        <ul>
+          <li>분석 결과를 JSON 패킷으로 변환</li>
+          <li>HUD와 지속적 양방향 연결 유지</li>
+          <li>대원 상태 로그 저장</li>
+          <li>지휘관 관제 화면으로 확장</li>
+        </ul>
+      </article>
+      <article class="stage reveal">
+        <span class="stage__no">04</span>
+        <h3>ADAPTIVE HUD</h3>
+        <p class="stage__tech">React · TypeScript · SVG · Canvas</p>
+        <ul>
+          <li>위험정보 Top-1/2 선택 표시</li>
+          <li>NORMAL · FOCUSED · EMERGENCY 전환</li>
+          <li>방향 벡터와 위험 아이콘 렌더링</li>
+          <li>골전도 · 햅틱 출력 상태 연동</li>
+        </ul>
+      </article>
+      <article class="stage reveal">
+        <span class="stage__no">05</span>
+        <h3>TEST &amp; QUALITY</h3>
+        <p class="stage__tech">Pytest · Mypy · Ruff · Vite</p>
+        <ul>
+          <li>엔트로피 · CLI 계산 단위시험</li>
+          <li>결측값 · 이상값 처리 시험</li>
+          <li>모드전환 · 히스테리시스 경계값 시험</li>
+          <li>React HUD 빌드 및 렌더링 검증</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="traits">
+      <div class="trait reveal"><h4>MODULAR</h4><p>입력 · 분석 · 통신 · HUD 모듈을 서로 독립적으로 수정</p></div>
+      <div class="trait reveal"><h4>REPRODUCIBLE</h4><p>같은 Replay 데이터를 반복 재생해 알고리즘 수정 전후를 비교</p></div>
+      <div class="trait reveal"><h4>EXTENSIBLE</h4><p>실제 센서 · 지휘관 관제 · 다중 대원 통신으로 확장</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ HARDWARE (light) ═══════════════ -->
+<section class="sec sec--paper" id="hardware">
+  <div class="wrap">
+    <p class="sec__idx">06 / 하드웨어</p>
+    <h2 class="sec__title reveal">헬멧 한 개에<br><span class="hl hl--paper">여섯 계층을 담습니다</span></h2>
+
+    <figure class="blueprint reveal">
+      <img src="assets/blueprint.jpg" alt="PHAROS 지능형 소방관 헬멧 설계도 — 정면·측면·상면·배면 뷰와 19개 구성 요소, 시스템 구성도 및 모듈 상세" loading="lazy" width="1800" height="1200">
+      <figcaption>PHAROS 헬멧 설계도 — 19개 구성 요소 · 4면 투상 · 모듈 상세 (Fusion 360)</figcaption>
+    </figure>
+
+    <div class="hw">
+      <div class="hw__modules">
+        <article class="mod reveal">
+          <h3>안구 메트릭 센싱</h3>
+          <p>안면 마스크 내부 850 nm IR LED 어레이와 오프액시스 고속 IR 센서(하단 30°·측면 15°)로
+            각막 반사점–동공 중심 상대 변위(PCCR)를 연산해 2D 시선 좌표와 동공 직경을 병렬 출력.</p>
+        </article>
+        <article class="mod reveal">
+          <h3>틴들 산란 센싱</h3>
+          <p>650 nm 레이저 다이오드와 90° 직교 배치 실리콘 포토다이오드를 밀폐 챔버에 탑재.
+            광원을 1 kHz로 점멸해 점등/소등 전압 차분으로 외광과 화염 플리커를 물리적으로 소거.</p>
+        </article>
+        <article class="mod reveal">
+          <h3>단안 Micro-OLED HUD</h3>
+          <p>중심 시계 하방 15° 지점에 100–3,000 nits 자동 가변 밝기로 투사.
+            전방 가시거리 급감 시 휘도를 최소화하고 골전도 유도음으로 전환.</p>
+        </article>
+        <article class="mod reveal">
+          <h3>골전도 · 방향성 햅틱</h3>
+          <p>턱뼈 접촉면 진동자로 청각 사각지대를 방어하고, 어깨·헬멧 측면의 좌우 격리 LRA 코인 모터로
+            방향을 지시. 모터 구동단은 광커플러로 물리 절연.</p>
+        </article>
+        <article class="mod reveal">
+          <h3>메시 통신 · 전력 관리</h3>
+          <p>지휘 서버 링크 소실 시 인접 대원 단말을 라우팅 노드로 전환해 다단 홉핑.
+            배터리 SOC 15% 이하에서 로드 셰딩으로 대피 가이드와 MAYDAY 전력을 보전.</p>
+          <p class="mod__packet">[대원 ID 1B] [위치 6B] [CLI 1B] [연기농도 3B] [전술이벤트 1B] [CRC 2B]</p>
+        </article>
+        <article class="mod reveal">
+          <h3>기구 · 실링</h3>
+          <p>내열 280 ℃ 이상 UL94-V0 등급 PC-PBT 합성수지 외함, 조립 이음선과 케이블 접촉단 전 부위
+            이중 O-ring으로 IP67 밀폐.</p>
+        </article>
+      </div>
+
+      <aside class="hw__spec reveal">
+        <figure class="hw__render">
+          <img src="assets/helmet-render.jpg" alt="PHAROS 헬멧 풀 모델링 — 틴들 센서 모듈, 안구 추적 카메라, HUD 프로젝터, 골전도 스피커가 장착된 상태" loading="lazy" width="1200" height="995">
+        </figure>
+        <h3>설계 사양 <span>(예시 값)</span></h3>
+        <table class="spec">
+          <tbody>
+            <tr><th scope="row">무게</th><td>1.35 kg (±0.1)</td></tr>
+            <tr><th scope="row">배터리</th><td>11.1 V / 6,800 mAh</td></tr>
+            <tr><th scope="row">사용 시간</th><td>약 6–8 시간</td></tr>
+            <tr><th scope="row">방수 / 방진</th><td>IP67</td></tr>
+            <tr><th scope="row">사용 온도</th><td>−20 ℃ ~ 60 ℃</td></tr>
+            <tr><th scope="row">디스플레이</th><td>단안 Micro-OLED</td></tr>
+            <tr><th scope="row">통신</th><td>2.4 GHz Mesh / BLE 5.0</td></tr>
+            <tr><th scope="row">센서</th><td>3방향 틴들 · IR 카메라 · IMU</td></tr>
+            <tr><th scope="row">프로세서</th><td>NVIDIA Jetson Orin Nano</td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </div>
+
+    <div class="fails">
+      <h3 class="fails__title reveal">고장을 전제로 설계했습니다</h3>
+      <div class="fails__grid">
+        <div class="fail reveal"><b>보수적 고장 대처</b><p>안구 카메라 파울링, 챔버 광학 오염 감지 시 정상 시계를 가정하지 않고 <em>안전 가시도 최소 상태</em>를 선언합니다.</p></div>
+        <div class="fail reveal"><b>독립 생존</b><p>지휘망 접속이 끊겨도 실내 회귀 방위 안내와 CLI 분석 파이프라인은 예비 전원으로 무중단 가동합니다.</p></div>
+        <div class="fail reveal"><b>다중 중복화</b><p>HUD · 오디오 · 햅틱 중 하나가 파손되어도 잔존 모달리티 출력이 자동 증폭 보완됩니다.</p></div>
+        <div class="fail reveal"><b>대원 제어권</b><p>장갑을 낀 채 조작하는 측면 비상 스위치로 MAYDAY 수동 발신, AI 우회, 고정 모드 전환이 가능합니다.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ VALIDATION ═══════════════ -->
+<section class="sec" id="validation">
+  <div class="wrap">
+    <p class="sec__idx">07 / 검증</p>
+    <h2 class="sec__title reveal">4단계 품질 게이트,<br><span class="hl">전 구간 통과</span></h2>
+    <p class="sec__lead reveal">
+      합성 입력을 이론값과 대조하는 방식으로 각 모듈을 단계별 검증했습니다.
+      Ruff 코드 검사, Mypy 타입 일관성 검사, Pytest 기능 테스트를 모두 통과했습니다.
+    </p>
+
+    <div class="gates">
+      <div class="gate reveal"><span>STAGE 1</span><b>9</b><i>시선 엔트로피 · 0.15s</i></div>
+      <div class="gate reveal"><span>STAGE 2</span><b>17</b><i>동공 CLI · Blink 보간 · 0.30s</i></div>
+      <div class="gate reveal"><span>STAGE 3</span><b>31</b><i>농연 센싱 · 가시거리 · 0.11s</i></div>
+      <div class="gate reveal"><span>STAGE 4</span><b>42</b><i>전술 우선순위 통합 · 0.17s</i></div>
+    </div>
+
+    <div class="vgrid">
+      <article class="vcard reveal">
+        <h3>Stage 1 — 시선 엔트로피</h3>
+        <div class="tablewrap">
+          <table class="data">
+            <thead><tr><th>입력 조건</th><th>실측치</th><th>제어 매핑</th></tr></thead>
+            <tbody>
+              <tr><td>단일 AOI 고착</td><td><b>H<sub>s</sub> = 0.0000</b></td><td>시선 고착 감지</td></tr>
+              <tr><td>12개 AOI 균등 분산</td><td><b>H<sub>s</sub><sup>norm</sup> = 1.0000</b></td><td>주의 불안정 판정</td></tr>
+              <tr><td>무작위 300점</td><td><b>0.9946</b></td><td>공간 분산 탐색</td></tr>
+              <tr><td>A→B→A→B 왕복</td><td><b>H<sub>t</sub> = 0.0000</b></td><td>결정론적 이동</td></tr>
+              <tr><td>4 AOI 무작위 전이</td><td><b>H<sub>t</sub> = 1.5264 bits</b></td><td>주의 분배 오류 경고</td></tr>
+              <tr><td>무작위 전이 300점</td><td><b>H<sub>t</sub><sup>norm</sup> = 0.9110</b></td><td>터널 비전 필터 스캔</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="vcard__note">고착과 균등 상태가 이론 경계값 0과 1에 정확히 매핑되었습니다.</p>
+      </article>
+
+      <article class="vcard reveal">
+        <h3>Stage 2 — 동공 CLI</h3>
+        <div class="clichart" id="cliChart" role="img" aria-label="동공 팽창 단계별 CLI 실측값. Flat 0.0000, Easy 0.2979, Medium 0.6779, Hard 0.8779, Blink 3개 삽입 후 보간 0.8779.">
+          <div class="clibar"><span style="--v:0" data-v="0.0000"></span><i>Flat</i></div>
+          <div class="clibar"><span style="--v:.2979" data-v="0.2979"></span><i>Easy</i></div>
+          <div class="clibar"><span style="--v:.6779" data-v="0.6779"></span><i>Medium</i></div>
+          <div class="clibar"><span style="--v:.8779" data-v="0.8779"></span><i>Hard</i></div>
+          <div class="clibar clibar--alt"><span style="--v:.8779" data-v="0.8779"></span><i>Blink×3<br>보간 후</i></div>
+        </div>
+        <p class="vcard__note">동공 팽창량 증가에 CLI가 단조 증가했고, 결측 3프레임을 삽입한 데이터도
+          전처리 보간 후 원본과 <b>소수점 4자리까지 동일</b>한 값을 냈습니다.</p>
+      </article>
+
+      <article class="vcard vcard--wide reveal">
+        <h3>Stage 3 — 농연 센싱과 가시거리 역산</h3>
+        <div class="chart">
+          <svg viewBox="0 0 320 150" role="img" aria-label="연기 농도에 따른 가시거리 감쇄 곡선. 농도 0에서 30미터, 농도 1에서 1.49미터로 단조 감소합니다.">
+            <defs>
+              <linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FF6B1A" stop-opacity=".28"/>
+                <stop offset="100%" stop-color="#FF6B1A" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <g class="chart__grid">
+              <line x1="30" y1="10" x2="310" y2="10"/><line x1="30" y1="45" x2="310" y2="45"/>
+              <line x1="30" y1="80" x2="310" y2="80"/><line x1="30" y1="115" x2="310" y2="115"/>
+              <line x1="30" y1="125" x2="310" y2="125"/>
+            </g>
+            <text class="chart__lab" x="26" y="13">30m</text>
+            <text class="chart__lab" x="26" y="48">20m</text>
+            <text class="chart__lab" x="26" y="83">10m</text>
+            <text class="chart__lab" x="26" y="118">3m</text>
+            <path class="chart__area" fill="url(#gArea)" d="M30,10 L44,26.7 L58,39.1 L72,49.2 L86,57.4 L100,64.2 L114,69.8 L128,74.4 L142,78.2 L156,81.4 L170,84 L184,86.2 L198,88 L212,89.5 L226,90.8 L240,91.8 L254,92.7 L268,93.5 L282,94.1 L296,94.6 L310,95.1 L310,140 L30,140 Z"/>
+            <polyline class="chart__line" points="30,10 44,26.7 58,39.1 72,49.2 86,57.4 100,64.2 114,69.8 128,74.4 142,78.2 156,81.4 170,84 184,86.2 198,88 212,89.5 226,90.8 240,91.8 254,92.7 268,93.5 282,94.1 296,94.6 310,95.1"/>
+            <g class="chart__pts">
+              <circle cx="30" cy="10" r="3"/><circle cx="61" cy="41" r="3"/>
+              <circle cx="123" cy="72.9" r="3"/><circle cx="186" cy="86.5" r="3"/>
+              <circle cx="248" cy="92.3" r="3"/><circle cx="310" cy="95.1" r="3"/>
+            </g>
+            <line class="chart__thr" x1="30" y1="125" x2="310" y2="125"/>
+            <text class="chart__thr-lab" x="196" y="136">EMERGENCY 임계 · V &lt; 3 m</text>
+            <text class="chart__ax" x="30" y="148">ρ = 0</text>
+            <text class="chart__ax" x="290" y="148">ρ = 1</text>
+          </svg>
+        </div>
+        <div class="tablewrap">
+          <table class="data">
+            <thead><tr><th>검계 전압</th><th>상대 농도 ρ</th><th>역산 가시거리 V</th><th>시스템 모드</th></tr></thead>
+            <tbody>
+              <tr><td>0.00</td><td>0.000</td><td><b>30.00 m</b></td><td><span class="pill pill--ok">NORMAL</span> 최상위 위협 시야 확보</td></tr>
+              <tr><td>0.11</td><td>0.111</td><td><b>21.50 m</b></td><td><span class="pill pill--ok">NORMAL</span> 부분 농연 보정</td></tr>
+              <tr><td>0.33</td><td>0.333</td><td><b>11.04 m</b></td><td><span class="pill pill--ok">NORMAL</span> 원거리 시각 점수 보정</td></tr>
+              <tr><td>0.56</td><td>0.556</td><td><b>5.67 m</b></td><td><span class="pill pill--warn">FOCUSED</span> 화면 간소화</td></tr>
+              <tr><td>0.78</td><td>0.778</td><td><b>2.91 m</b></td><td><span class="pill pill--bad">EMERGENCY</span> 가시 한계 침하</td></tr>
+              <tr><td>1.00</td><td>1.000</td><td><b>1.49 m</b></td><td><span class="pill pill--bad">EMERGENCY</span> 시계 제로 선언</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="vcard vcard--wide reveal">
+        <h3>Stage 4 — 방향성 우선순위 재정렬</h3>
+        <p class="vcard__lead">우측 템플 센서에만 연기 농도 0.99를 인가했을 때, <b>그 방향의 항목만</b> 강등되고
+          나머지 방향의 점수는 소수점까지 그대로 보존되는지 확인했습니다.</p>
+        <div class="ab">
+          <div class="ab__col">
+            <h4>평시 정상 모드</h4>
+            <ol class="rank">
+              <li><span>요구조자 (A)</span><b>0.575</b><i>HUD 핵심 표출</i></li>
+              <li><span>안전 대피로 (B)</span><b>0.495</b><i>HUD 퇴로 아이콘</i></li>
+              <li><span>화점·플래시오버 (C)</span><b>0.435</b><i>화점 위험 경보</i></li>
+              <li><span>구조물 위험</span><b>0.355</b><i>대기</i></li>
+              <li><span>동료 위치</span><b>0.295</b><i>대기</i></li>
+            </ol>
+          </div>
+          <div class="ab__arrow" aria-hidden="true">
+            <span>ρ<sub>R</sub> = 0.99</span>
+          </div>
+          <div class="ab__col ab__col--after">
+            <h4>우측 농연 과급</h4>
+            <ol class="rank">
+              <li><span>안전 대피로 (B)</span><b>0.495</b><i>HUD 중앙 집중·경로 고정</i></li>
+              <li><span>화점·플래시오버 (C)</span><b>0.435</b><i>대기</i></li>
+              <li><span>구조물 위험</span><b>0.355</b><i>대기</i></li>
+              <li><span>동료 위치</span><b>0.295</b><i>대기</i></li>
+              <li class="rank--drop"><span>요구조자 (A)</span><b>0.2334</b><i>시각 차단 → 햅틱·골전도 이관</i></li>
+            </ol>
+          </div>
+        </div>
+        <p class="vcard__note">전역 연기 값 하나로 화면 전체를 죽이는 방식이 아니라,
+          <b>국소 틴들 수광 정보가 해당 지향 위험에만 개입</b>하는 독립 감각 이관 로직이 정상 동작함을 보여줍니다.</p>
+      </article>
+    </div>
+
+    <p class="caveat reveal">
+      <b>한계 고지.</b> 본 결과는 소프트웨어 알고리즘과 합성 입력을 대조 검증한 것입니다.
+      실제 화재 현장에서의 센서 정확도, 착용 편의성, 내열성, 통신 안정성, 실제 인지부하 저감 효과는
+      하드웨어 프로토타입과 사용자 실험을 통해 별도로 검증해야 합니다.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════ COMPARE ═══════════════ -->
+<section class="sec sec--alt" id="compare">
+  <div class="wrap">
+    <p class="sec__idx">08 / 비교</p>
+    <h2 class="sec__title reveal">기존 장비와<br><span class="hl">무엇이 다른가</span></h2>
+
+    <div class="tablewrap tablewrap--cmp reveal">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th scope="col">비교 항목</th>
+            <th scope="col">3M Scott Sight</th>
+            <th scope="col">Qwake C-THRU</th>
+            <th scope="col">MSA G1</th>
+            <th scope="col" class="cmp__me">PHAROS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">정보 표시 방식</th>
+            <td>미가공 열화상 화면 상시 노출</td>
+            <td>AI 실시간 테두리 가이드라인</td>
+            <td>공기 잔량·장비 상태 LED</td>
+            <td class="cmp__me">위험도 가중치 기반 실시간 Top-1/2 가변 표출</td>
+          </tr>
+          <tr>
+            <th scope="row">사용자 인지 상태 분석</th>
+            <td>부재 (고정 렌더링)</td>
+            <td>부재 (고정 렌더링)</td>
+            <td>부재</td>
+            <td class="cmp__me">시선 엔트로피 H<sub>t</sub> · 동공 반응 CLI 융합 분석</td>
+          </tr>
+          <tr>
+            <th scope="row">연기 가시성 적응</th>
+            <td>열 탐지 가능하나 시야 방해에 무감</td>
+            <td>구조물 강조 중심, 농도 감지 한계</td>
+            <td>없음</td>
+            <td class="cmp__me">틴들 산란 기반 실시간 가시거리 산출·매칭</td>
+          </tr>
+          <tr>
+            <th scope="row">우선순위 엔진</th>
+            <td>고정형</td>
+            <td>규칙 기반 고정</td>
+            <td>해당 없음</td>
+            <td class="cmp__me">STOM/SEEV 기반 인지 가치 평가 및 재배치</td>
+          </tr>
+          <tr>
+            <th scope="row">대체 출력 채널</th>
+            <td>시각 집중형</td>
+            <td>시각 집중형</td>
+            <td>단순 비프 경고음</td>
+            <td class="cmp__me">시각 · 골전도 · 방향성 햅틱 자동 크로스모달</td>
+          </tr>
+          <tr>
+            <th scope="row">팀 단위 상황 공유</th>
+            <td>무선 영상 송신 한정</td>
+            <td>자체 클라우드 전송 위주</td>
+            <td>단순 경보 공유</td>
+            <td class="cmp__me">대원별 CLI · 위치 · 통신 상태 상호 동기화</td>
+          </tr>
+          <tr>
+            <th scope="row">제어 루프 구조</th>
+            <td>Open-loop</td>
+            <td>Open-loop</td>
+            <td>Open-loop</td>
+            <td class="cmp__me">센싱–판단–표출–재센싱 <b>Closed-loop</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tablehint">← 좌우로 스크롤하여 전체 항목을 확인하세요</p>
+  </div>
+</section>
+
+<!-- ═══════════════ ROADMAP ═══════════════ -->
+<section class="sec" id="roadmap">
+  <div class="wrap">
+    <p class="sec__idx">09 / 다음 단계</p>
+    <h2 class="sec__title reveal">합성 데이터에서<br><span class="hl">현장으로</span></h2>
+
+    <ol class="road">
+      <li class="reveal"><span class="road__n">01</span>
+        <h3>센서 정확도 실측 검증</h3>
+        <p>실제 연기 환경에서 틴들 센서값과 가시거리의 관계를 측정하고, 목재·플라스틱·섬유 등 연소 물질과 수증기·오염에 따른 오차를 보정합니다.</p>
+      </li>
+      <li class="reveal"><span class="road__n">02</span>
+        <h3>사용자 실험</h3>
+        <p>소방관 또는 훈련 참가자를 대상으로 고정형 HUD와 적응형 HUD의 요구조자 탐지시간, 정보 누락률, 반응시간, NASA-TLX 주관 작업부하를 비교합니다.</p>
+      </li>
+      <li class="reveal"><span class="road__n">03</span>
+        <h3>하드웨어 통합</h3>
+        <p>안구 카메라, HUD, 골전도 장치, 햅틱 모터, 통신 모듈을 헬멧 시제품에 결합하고 고온·충격·방수 내구성과 장시간 착용 피로도를 확인합니다.</p>
+      </li>
+      <li class="reveal"><span class="road__n">04</span>
+        <h3>안전성과 신뢰성 검증</h3>
+        <p>센서 오류, 통신 두절, 배터리 부족 상황에서도 대피 안내와 MAYDAY가 유지되는지 확인하고, 장시간 연속 실행·데이터 폭주·다수 대원 동시 접속 시나리오까지 시험 범위를 넓힙니다.</p>
+      </li>
+      <li class="reveal"><span class="road__n">05</span>
+        <h3>개인화와 확장</h3>
+        <p>동공 크기와 시선 패턴의 개인차를 반영한 사용자별 CLI 임계값 자동 조정, 그리고 열화상·깊이 센서·UWB 위치 추적을 통합한 3차원 대피 경로 안내로 확장합니다.</p>
+      </li>
+    </ol>
+
+    <div class="impact">
+      <h3 class="impact__title reveal">기대 효과</h3>
+      <div class="impact__grid">
+        <div class="reveal"><b>01</b><p>확인해야 할 정보 수를 제한해 시각 정보 과부하를 줄입니다.</p></div>
+        <div class="reveal"><b>02</b><p>시선·동공 데이터로 인지 상태에 따라 HUD를 실시간 단순화합니다.</p></div>
+        <div class="reveal"><b>03</b><p>방향별 가시성을 반영해 볼 수 있는 정보와 옮겨야 할 정보를 구분합니다.</p></div>
+        <div class="reveal"><b>04</b><p>시각 전달이 어려울 때 골전도·햅틱으로 채널을 전환합니다.</p></div>
+        <div class="reveal"><b>05</b><p>개인 장비를 팀 단위 안전관리 시스템으로 확장합니다.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ TEAM ═══════════════ -->
+<section class="sec sec--alt" id="team">
+  <div class="wrap">
+    <p class="sec__idx">10 / 팀</p>
+    <h2 class="sec__title reveal">TEAM ARK</h2>
+    <p class="sec__lead reveal">대전대신고등학교 · 제8회 한국코드페어 소프트웨어 공모전 출품작</p>
+
+    <ul class="people">
+      <li class="reveal"><b>김선민</b><span>팀장</span><i>대전대신고등학교</i></li>
+      <li class="reveal"><b>송리안</b><span>팀원</span><i>대전대신고등학교</i></li>
+      <li class="reveal"><b>안재민</b><span>팀원</span><i>대전대신고등학교</i></li>
+      <li class="reveal"><b>신형철</b><span>지도교사</span><i>대전대신고등학교</i></li>
+    </ul>
+
+    <div class="refs">
+      <h3 class="refs__title reveal">참고 문헌</h3>
+      <ul class="reflist">
+        <li class="reveal"><b>Shannon, C. E. (1948).</b> A Mathematical Theory of Communication. <i>Bell System Technical Journal, 27</i>, 379–423, 623–656.<span>시선 분산도 및 이동 불규칙성 계산</span></li>
+        <li class="reveal"><b>Shiferaw, B. A., Downey, L. A., &amp; Crewther, D. P. (2018).</b> Stationary gaze entropy predicts lane departure events in sleep-deprived drivers. <i>Scientific Reports, 8</i>, 2220.<span>시각 탐색 상태 분석 및 터널 비전 판별</span></li>
+        <li class="reveal"><b>Szulewski, A., Roth, N., &amp; Howes, D. (2015).</b> The Use of Task-Evoked Pupillary Response as an Objective Measure of Cognitive Load. <i>Academic Medicine, 90</i>(7), 981–987.<span>동공 변화율 기반 CLI 산출 및 조도 보정</span></li>
+        <li class="reveal"><b>Wickens, C. D. (2002).</b> Multiple Resources and Performance Prediction. <i>Theoretical Issues in Ergonomics Science, 3</i>(2), 159–177.<span>시각·청각·촉각 정보 채널 분산 처리</span></li>
+        <li class="reveal"><b>Wickens, C. D. et al. (2008).</b> Attention–Situation Awareness Model of Pilot Error. In <i>Human Performance Modeling in Aviation</i>. CRC Press.<span>위험 우선순위 점수 산정 엔진 설계</span></li>
+        <li class="reveal"><b>Koschmieder, H. (1924).</b> Theorie der horizontalen Sichtweite. <i>Beiträge zur Physik der freien Atmosphäre, 12</i>, 33–53, 171–181.<span>연기 농도–가시거리 상관 모델링</span></li>
+        <li class="reveal"><b>Deza, A. et al. (2017).</b> Attention Allocation Aid for Visual Search. <i>arXiv:1701.03968</i>.<span>사용자 상태 재측정 기반 동적 적응 구조</span></li>
+      </ul>
+    </div>
+
+    <p class="disclosure reveal">
+      <b>인공지능 사용 고지.</b> 작성 과정에서 인공지능은 자료 조사, 작성 보조, 일부 수치 및 시각화 과정에서만 사용되었으며,
+      아이디어와 핵심 구성의 구조화는 모두 TEAM ARK 팀원들이 수행했습니다. 모든 인공지능 초안은 사람이 검토하고 재구성했습니다.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div class="foot__brand">
+      <img src="assets/logo.svg" alt="" width="34" height="34">
+      <div>
+        <b>PHAROS</b>
+        <span>Priority · Hazard · Attention · Reorganizing · Overload · Suppression</span>
+      </div>
+    </div>
+    <nav class="foot__links" aria-label="바닥글 링크">
+      <a href="https://github.com/WE-ON-ARK/PHAROS" target="_blank" rel="noopener">GitHub 저장소 ↗</a>
+      <a href="#top">맨 위로 ↑</a>
+    </nav>
+    <p class="foot__copy">© 2026 TEAM ARK · 대전대신고등학교 · 제8회 한국코드페어 소프트웨어 공모전</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
